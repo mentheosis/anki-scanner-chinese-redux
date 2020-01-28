@@ -20,7 +20,5 @@ from os.path import dirname, join
 
 sys.path.append(join(dirname(__file__), 'lib'))
 
-#print("HI IN MAIN")
-
 # from . import main
 # main.load()
