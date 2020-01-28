@@ -132,19 +132,23 @@ class Dictionary:
         return self.get_word(word, word_len, type_='simp')
 
     def get_word(self, word, word_len=4, type_='trad'):
+        print("getting word")
         p = self._get_word(word, type_)
         if p:
             return p
 
+        print("a")
         if len(word) == 1:
             return self._get_char(word, type_)
 
+        print("b")
         # Try each 4-character sequence in turn, then 3-sequence, then
         # 2-sequence and if those fails, do unit lookup.
 
         result = ''
         word = word[:]
         while len(word) > 0:
+            print("while")
             word_was_found = False
 
             while word_len > 1:
