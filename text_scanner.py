@@ -114,12 +114,39 @@ class TextScanner:
                     new_char_words[word] = word
         return new_char_words
 
+
+    ##############################
+    ### printing / entrypoint funtions
+
     def print_comparison_stats(self, leftname, rightname, left, right, new, overlap, noun):
-        print('')#newline
-        print(len(right), f' {noun} in dedupe list ({rightname})')
-        print(len(left), f" {noun} in {leftname}:  ")
+        #print(len(right), f' {noun} in dedupe list {rightname}')
+        print(len(left), f" {noun} in {leftname}")
         #print("random word from those found:",list(jieba_words.values())[35])
-        print(len(overlap), f" overlap {noun}")
+        #print(len(overlap), f" overlap {noun}")
         print(len(new), f" new {noun}")
         #print("\nrandom new word:",list(new_words.values())[36])
         #print("\noverlap words:", overlap_words.keys())
+
+    def scan_and_compare(self, text_path, anki_db_path, anki_key_index = 0, file_or_dir="file"):
+        anki_words = self.load_words_from_anki_notes(anki_db_path, anki_key_index)
+        scanned_words = self.parse_unzipped_epub_to_dict(text_path) if file_or_dir == "dir" else self.parse_single_file_to_dict(text_path)
+        left_diff, intersect = self.get_leftdiff_and_intersect(scanned_words, anki_words)
+
+        anki_chars = self.parse_chars_from_dict(anki_words)
+        scanned_chars = self.parse_chars_from_dict(scanned_words)
+        char_diff, char_intersect = self.get_leftdiff_and_intersect(scanned_chars, anki_chars)
+
+        return scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect
+
+    def scan_and_print(self, text_path, anki_db_path, anki_key_index = 0, file_or_dir="file"):
+        scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect = self.scan_and_compare(
+            text_path,
+            anki_db_path,
+            anki_key_index,
+            file_or_dir
+        )
+        print(f"\n{text_path}")
+        self.print_comparison_stats(text_path,anki_db_path, scanned_words, anki_words, left_diff, intersect, "words")
+        self.print_comparison_stats(text_path,anki_db_path, scanned_chars, anki_chars, char_diff, char_intersect, "chars")
+        new_char_words = self.get_words_using_chars(left_diff,char_diff)
+        print(len(new_char_words),"words using new chars")
