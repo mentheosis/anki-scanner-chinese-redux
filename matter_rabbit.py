@@ -15,13 +15,14 @@ print("\nStarting\n")
 #####
 
 anki_dedupe_file_path = './text-files/hsk_words.anki2'
+field_index_to_use_in_anki_note = 1
 text_to_scan = './text-files/liulangdiqiu_liucixin.txt'
 text_is_file_or_dir = 'file'
 output_apk_path = './import_this.apkg'
 
 dictionary = Dictionary(external_mode=True)
 anki_db_path = join(dirname(realpath(__file__)),anki_dedupe_file_path)
-sc = TextScanner(dictionary, anki_db_path, 1)
+sc = TextScanner(dictionary, anki_db_path, field_index_to_use_in_anki_note)
 nm = NoteMaker(dictionary)
 
 #sc.query_anki_db("select models from col")
