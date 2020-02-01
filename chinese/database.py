@@ -23,7 +23,9 @@ from .util import add_with_space
 
 
 class Dictionary:
-    def __init__(self):
+    # external mode means running outside of anki
+    def __init__(self, external_mode = False):
+        self.external_mode = external_mode
         db_path = join(dirname(realpath(__file__)), 'data', 'db', 'chinese.db')
         self.conn = connect(db_path)
         self.c = self.conn.cursor()
@@ -39,7 +41,11 @@ class Dictionary:
         self.conn.commit()
 
     def _get_word_pinyin(self, word, type_, prefer_tw=False, no_variants=True):
-        from .transcribe import accentuate
+        if self.external_mode == False:
+            from .transcribe import accentuate
+        else:
+            def accentuate(text, target):
+                return text
 
         if type_ == 'trad':
             query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'

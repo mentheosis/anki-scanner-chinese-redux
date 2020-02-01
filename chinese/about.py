@@ -35,6 +35,7 @@ def showAbout():
         'Chris Hatch',
         'Roland Sieker',
         'Thomas TEMPÉ',
+        'Text scanner added by: MatterRabbit'
     ]
 
     text = '''

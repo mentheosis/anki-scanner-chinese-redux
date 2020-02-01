@@ -81,6 +81,12 @@ def load_menu():
     add_menu_item('Chinese::Bulk Fill', _('Sound'), bulk_fill_sound)
     add_menu_item('Chinese::Bulk Fill', _('Silhouette'), bulk_fill_silhouette)
 
+
+    add_menu('Chinese::Text Scanner')
+    add_menu_item('Chinese::Text Scanner', _('Scan text'), showAbout)
+
+
+
     add_menu('Chinese::Help')
     add_menu_item(
         'Chinese::Help',

@@ -1,11 +1,12 @@
 import os
 import jieba
-from os.path import dirname, join, realpath
 from sqlite3 import connect
 
 class TextScanner:
-    def __init__(self, dictionary):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_key_index = 0):
         self.dictionary = dictionary
+        self.anki_db_file_path = anki_db_file_path
+        self.anki_note_key_index = anki_note_key_index
 
     ##############################
     ### Input text functions
@@ -55,6 +56,29 @@ class TextScanner:
       sql TEXT
     );
     '''
+    def query_anki_db(self, query = 1):
+        db_path = self.anki_db_file_path
+        conn = connect(db_path)
+        c = conn.cursor()
+
+        if query == 1:
+            #query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
+            #query = 'select type tbl_name from SQLITE_MASTER'
+            #query = 'select * from notes'
+            #query = 'select sql from SQLITE_MASTER where tbl_name = "notes"'
+            query = "select distinct flds from notes where tags not like '%HSK6%' "
+        print("query",query)
+        c.execute(query)
+        already_have_words = {}
+        for row in c:
+            print("row",row)
+            ''' # use for sqlite_master
+            print("row",row[1],row[1],row[2],row[3])
+            sub_row = row[4].split("\n")
+            for sub in sub_row:
+                print("subrow:",sub)
+            '''
+
     '''
     file_path: path to an anki2 file, which is a sqllite file that
             comes from an unzipped anki .apckg
@@ -63,21 +87,16 @@ class TextScanner:
             will be used as the key (e.g. the single word string)
             usually 0 or 1
     '''
-    def load_words_from_anki_notes(self, file_path, key_index = 0):
-        db_path = join(dirname(realpath(__file__)),file_path)
+    def load_words_from_anki_notes(self):
+        db_path = self.anki_db_file_path
         conn = connect(db_path)
         c = conn.cursor()
 
-        #query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
-        #query = 'select type tbl_name from SQLITE_MASTER'
-        #query = 'select * from notes'
-        #query = 'select sql from SQLITE_MASTER where tbl_name = "notes"'
         query = "select distinct flds from notes where tags not like '%HSK6%' "
         c.execute(query)
-
         already_have_words = {}
         for row in c:
-            word = row[0].split("\x1f")[key_index]
+            word = row[0].split("\x1f")[self.anki_note_key_index]
             #print("\nparsed", word, row)
             already_have_words[word] = (None,None)
         return already_have_words
@@ -90,12 +109,12 @@ class TextScanner:
         intersect = {}
         for word in scanned_words:
             if dedupe_list.get(word) == None:
-                definition = self.dictionary.get_definitions(word,"en")
-                leftdiff[word] = (word,definition)
+                #definition = self.dictionary.get_definitions(word,"en")
+                leftdiff[word] = (word,None)
 
             if dedupe_list.get(word) != None:
-                definition = self.dictionary.get_definitions(word,"en")
-                intersect[word] = (word,definition)
+                #definition = self.dictionary.get_definitions(word,"en")
+                intersect[word] = (word,None)
         return leftdiff, intersect
 
     def parse_chars_from_dict(self, dict):
@@ -127,8 +146,8 @@ class TextScanner:
         #print("\nrandom new word:",list(new_words.values())[36])
         #print("\noverlap words:", overlap_words.keys())
 
-    def scan_and_compare(self, text_path, anki_db_path, anki_key_index = 0, file_or_dir="file"):
-        anki_words = self.load_words_from_anki_notes(anki_db_path, anki_key_index)
+    def scan_and_compare(self, text_path, file_or_dir="file"):
+        anki_words = self.load_words_from_anki_notes()
         scanned_words = self.parse_unzipped_epub_to_dict(text_path) if file_or_dir == "dir" else self.parse_single_file_to_dict(text_path)
         left_diff, intersect = self.get_leftdiff_and_intersect(scanned_words, anki_words)
 
@@ -138,15 +157,14 @@ class TextScanner:
 
         return scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect
 
-    def scan_and_print(self, text_path, anki_db_path, anki_key_index = 0, file_or_dir="file"):
+    def scan_and_print(self, text_path, file_or_dir="file"):
         scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect = self.scan_and_compare(
             text_path,
-            anki_db_path,
-            anki_key_index,
             file_or_dir
         )
         print(f"\n{text_path}")
-        self.print_comparison_stats(text_path,anki_db_path, scanned_words, anki_words, left_diff, intersect, "words")
-        self.print_comparison_stats(text_path,anki_db_path, scanned_chars, anki_chars, char_diff, char_intersect, "chars")
+        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "words")
+        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "chars")
         new_char_words = self.get_words_using_chars(left_diff,char_diff)
         print(len(new_char_words),"words using new chars")
+        return new_char_words, left_diff, char_diff
