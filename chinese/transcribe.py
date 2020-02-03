@@ -33,7 +33,7 @@ from .consts import (
     TONE_NUM_REGEX,
 )
 from .hanzi import has_hanzi
-from .main import dictionary
+from .singletons import dictionary
 from .ruby import has_ruby, ruby_bottom, ruby_top, separate_ruby
 from .util import cleanup, is_punc, no_color
 

@@ -21,9 +21,6 @@ from collections import defaultdict
 from json import dump, load
 from os.path import dirname, exists, join, realpath
 
-from aqt import mw
-
-
 class ConfigManager:
     default_path = join(dirname(realpath(__file__)), 'config.json')
     saved_path = join(dirname(realpath(__file__)), 'config_saved.json')
@@ -47,6 +44,7 @@ class ConfigManager:
         self.config.update(d)
 
     def save(self):
+        from aqt import mw
         with open(self.saved_path, 'w', encoding='utf-8') as f:
             dump(self.config, f)
         mw.addonManager.writeConfig(__name__, self.config)

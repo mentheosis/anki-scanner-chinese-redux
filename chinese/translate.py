@@ -17,7 +17,7 @@
 # Chinese Support Redux.  If not, see <https://www.gnu.org/licenses/>.
 
 from .color import colorize_dict
-from .main import dictionary
+from .singletons import dictionary
 from .util import cleanup
 
 

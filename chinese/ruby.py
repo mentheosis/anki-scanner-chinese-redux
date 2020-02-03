@@ -21,7 +21,7 @@ from re import search, sub
 from .bopomofo import bopomofo
 from .consts import HANZI_REGEX
 from .hanzi import has_hanzi
-from .main import dictionary
+from .singletons import dictionary
 from .util import hide, no_color
 
 

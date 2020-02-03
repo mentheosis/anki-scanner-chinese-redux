@@ -18,18 +18,21 @@ anki_dedupe_file_path = './text-files/hsk_words.anki2'
 field_index_to_use_in_anki_note = 1
 text_to_scan = './text-files/liulangdiqiu_liucixin.txt'
 text_is_file_or_dir = 'file'
+media_dir_path = './text-files/media/'
 output_apk_path = './import_this.apkg'
+#tags connot contain spaces
+tag_for_cards = "imported_from_流浪地球"
 
 dictionary = Dictionary(external_mode=True)
 anki_db_path = join(dirname(realpath(__file__)),anki_dedupe_file_path)
 sc = TextScanner(dictionary, anki_db_path, field_index_to_use_in_anki_note)
-nm = NoteMaker(dictionary)
+nm = NoteMaker(dictionary, media_dir_path)
 
 #sc.query_anki_db("select models from col")
 #new_char_words, new_words, new_chars = sc.scan_and_print('./text-files/diqitian/', 'dir')
 #new_char_words, new_words, new_chars = sc.scan_and_print('./text-files/santisanbuqu_liucixin.txt', 'file')
 new_char_words, new_words, new_chars = sc.scan_and_print(text_to_scan, text_is_file_or_dir)
 
-nm.make_notes(new_char_words,output_apk_path)
+nm.make_notes(new_char_words, output_apk_path, tag_for_cards, include_sound=True)
 
 print("\ndone\n")

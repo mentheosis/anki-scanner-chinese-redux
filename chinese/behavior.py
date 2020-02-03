@@ -19,7 +19,7 @@
 from .color import colorize, colorize_dict, colorize_fuse
 from .freq import get_frequency
 from .hanzi import get_silhouette, get_simp, get_trad, split_hanzi
-from .main import config, dictionary
+from .singletons import config, dictionary
 from .sound import sound
 from .transcribe import (
     accentuate,
@@ -143,7 +143,7 @@ def reformat_transcript(note, group, target):
     set_all(config['fields'][group], note, to=hidden)
 
 
-def fill_color(hanzi, note):
+def find_colors(hanzi,note):
     if config['target'] in ['pinyin', 'pinyin_tw', 'bopomofo']:
         target = 'pinyin'
         field_group = 'pinyin'
@@ -158,8 +158,10 @@ def fill_color(hanzi, note):
     trans = split_transcript(' '.join(trans), target, grouped=False)
     hanzi = split_hanzi(cleanup(hanzi), grouped=False)
     colorized = colorize_fuse(hanzi, trans)
-    set_all(config['fields']['colorHanzi'], note, to=colorized)
+    return colorized
 
+def fill_color(hanzi, note):
+    set_all(config['fields']['colorHanzi'], note, to=find_colors(hanzi,note))
 
 def fill_sound(hanzi, note):
     updated = 0

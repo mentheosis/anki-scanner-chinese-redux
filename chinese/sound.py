@@ -20,15 +20,12 @@ from re import findall, sub
 
 from .consts import SOUND_TAG_REGEX
 from .hanzi import has_hanzi
-from .main import config
+from .singletons import config
 from .tts import AudioDownloader
 
-
-def sound(hanzi, source=None):
+def sound(hanzi, source=None, external_media_path=None):
     """Returns sound tag for a given Hanzi string."""
-
     from .ruby import ruby_bottom, has_ruby
-
     if not has_hanzi(hanzi):
         return ''
 
@@ -48,10 +45,36 @@ def sound(hanzi, source=None):
         return ''
 
     if source:
-        return '[sound:%s]' % AudioDownloader(hanzi, source).download()
+        return '[sound:%s]' % AudioDownloader(hanzi, source, external_media_path).download()
 
     return ''
 
+def sound_with_path(hanzi, source=None, external_media_path=None):
+    """Returns sound tag for a given Hanzi string, along with the path for the sound file"""
+    from .ruby import ruby_bottom, has_ruby
+    if not has_hanzi(hanzi):
+        return '', ''
+
+    if not source:
+        source = config['speech']
+
+    if not source:
+        return '',''
+
+    if source.count('|') != 1:
+        raise ValueError(source)
+
+    if has_ruby(hanzi):
+        hanzi = ruby_bottom(hanzi)
+
+    if not hanzi:
+        return '',''
+
+    if source:
+        path = AudioDownloader(hanzi, source, external_media_path).download()
+        return '[sound:%s]' % path, path
+
+    return '',''
 
 def extract_tags(text):
     tags = findall(SOUND_TAG_REGEX, text)

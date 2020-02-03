@@ -41,12 +41,8 @@ class Dictionary:
         self.conn.commit()
 
     def _get_word_pinyin(self, word, type_, prefer_tw=False, no_variants=True):
-        if self.external_mode == False:
-            from .transcribe import accentuate
-        else:
-            def accentuate(text, target):
-                return text
-
+        # this seems awkwardly placed here - cant move to head or it creates circular ref..
+        from .transcribe import accentuate
         if type_ == 'trad':
             query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
         elif type_ == 'simp':
