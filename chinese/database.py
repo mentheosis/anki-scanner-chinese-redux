@@ -23,7 +23,6 @@ from .util import add_with_space
 
 
 class Dictionary:
-    # external mode means running outside of anki
     def __init__(self):
         db_path = join(dirname(realpath(__file__)), 'data', 'db', 'chinese.db')
         self.conn = connect(db_path)

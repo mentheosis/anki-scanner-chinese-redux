@@ -23,7 +23,7 @@ from .hanzi import has_hanzi
 from .singletons import config
 from .tts import AudioDownloader
 
-def sound(hanzi, source=None, external_media_path=None):
+def sound(hanzi, source=None):
     """Returns sound tag for a given Hanzi string."""
     from .ruby import ruby_bottom, has_ruby
     if not has_hanzi(hanzi):
@@ -45,7 +45,7 @@ def sound(hanzi, source=None, external_media_path=None):
         return ''
 
     if source:
-        return '[sound:%s]' % AudioDownloader(hanzi, source, external_media_path).download()
+        return '[sound:%s]' % AudioDownloader(hanzi, source).download()
 
     return ''
 
