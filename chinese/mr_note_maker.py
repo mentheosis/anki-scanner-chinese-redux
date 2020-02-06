@@ -22,10 +22,11 @@ class NoteMaker:
                 #{'name':'Definition sparse'}, #used for reverse cards to hide extra definition info from pleco
                 {'name':'Classifier'},
                 {'name':'Color'},
-                #{'name':'SentenceSimplified'},
-                #{'name':'SentencePinyin'},
+                {'name':'Sentence'},
+                {'name':'SentencePinyin'},
                 #{'name':'SentenceMeaning'},
                 #{'name':'SentenceAudio'},
+                {'name':'sort'},
                 {'name':'Frequency'}
             ],
             templates=[{
@@ -62,41 +63,49 @@ class NoteMaker:
             return "error finding sound",''
 
     # should return an array with same length as note_model.fields
-    def enrich_word(self, word, include_sound):
-        simp = self.dictionary._get_word(word,"simp")
-        trad = self.dictionary._get_word(word,"trad")
-        definition = self.try_find_definition_by_char(word)
+    def enrich_word(self, rawNote, include_sound):
+        simp = rawNote.simplified
+        trad = rawNote.traditional
+        definition = self.try_find_definition_by_char(rawNote.word)
         pinyin = self.dictionary.get_pinyin(simp,'simp')
         color_pinyin = find_colors(pinyin,{"pinyin":pinyin})
 
-        classifier = get_classifier(word, [])
-        color = find_colors(word,{"pinyin":pinyin})
-        frequency = get_frequency(word)
+        sentence_pinyin = self.dictionary.get_pinyin(rawNote.sentence,'simp')
+        sentence_color_pinyin = find_colors(sentence_pinyin,{"pinyin":sentence_pinyin})
+
+        classifier = get_classifier(rawNote.word, [])
+        color = find_colors(rawNote.word,{"pinyin":pinyin})
+        frequency = get_frequency(rawNote.word)
 
         sound=''
         media_path = ''
         if include_sound:
             #"google|zh-cn"
             #"google|zh-tw"
-            sound, media_path = self.find_sound(word,"google|zh-tw")
+            sound, media_path = self.find_sound(rawNote.word,"google|zh-tw")
 
-        res = [word, simp, trad, color_pinyin, sound, definition, classifier, color, frequency]
+        # all fields must be strings
+        res = [rawNote.word, simp, trad, color_pinyin, sound, definition,
+                classifier, color, rawNote.sentence, sentence_color_pinyin,
+                str(rawNote.sort_order), frequency]
+        assert len(res) == len(self.note_model.fields)
         return res, join(self.external_media_path,media_path)
 
-    def make_notes(self, words, out_path, tag, include_sound=False):
+    # @param rawNoteDict should be a dictionary of ChineseNote objects from ./mr_text_scanner.py
+    def make_notes(self, rawNoteDict, deck_name, out_path, tag, include_sound=False):
         deck = genanki.Deck(
             2059400110,
-            'Import deck'
+            deck_name
         )
 
         print("\nNote maker is now gathering enrichment data for the words, this may take a while...")
         i = 0
         media_paths = []
-        for word in words:
+        for simp in rawNoteDict:
             i+=1
             if i%25 == 0:
                 print(f"{i} words enriched")
-            note, media_path = self.enrich_word(word, include_sound)
+            note, media_path = self.enrich_word(rawNoteDict[simp], include_sound)
             media_paths.append(media_path)
             deck.add_note(genanki.Note( self.note_model, note, tags=[tag]))
 

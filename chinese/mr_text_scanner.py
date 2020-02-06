@@ -2,23 +2,51 @@ import os
 import jieba
 from sqlite3 import connect
 
+class ChineseNote:
+    def __init__(self, word, simplified, traditional, sort_order=0, sentence="", count=0, frequency="unknown"):
+        self.word = word
+        self.simplified = simplified
+        self.traditional = traditional
+        self.sort_order = sort_order
+        self.sentence = sentence
+        self.count = count
+        self.frequency = frequency
+
+    def incrCount(self):
+        self.count += 1
+
+    def __str__(self):
+         str = f"key:{self.word}, simplified:{self.simplified}, traditional:{self.traditional}"
+         str=str+f"\nfirst_appearance_rank:{self.sort_order}, count_in_text:{self.count}"
+         str=str+f"\nsentence:{self.sentence}"
+         return str
+
+
 class TextScanner:
-    def __init__(self, dictionary, anki_db_file_path, anki_note_key_index = 0):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[]):
         self.dictionary = dictionary
         self.anki_db_file_path = anki_db_file_path
-        self.anki_note_key_index = anki_note_key_index
+        self.anki_note_indices = anki_note_indices
+        self.tags_to_exclude = tags_to_exclude
 
     ##############################
     ### Input text functions
 
-    def parse_string_with_jieba(self, text):
-        #cut_all=False means "accurate mode" https://github.com/fxsjy/jieba
-        seg_list = jieba.cut(text, cut_all=False)
+    def parse_sentences_with_jieba(self, sentences):
         jieba_words = {}
-        for word in seg_list:
-            res = self.dictionary._get_word(word,"simp")
-            if res != None:
-                jieba_words[res] = (res,None)
+        i = 1
+        for text in sentences:
+            #cut_all=False means "accurate mode" https://github.com/fxsjy/jieba
+            seg_list = jieba.cut(text, cut_all=False)
+            for word in seg_list:
+                simp = self.dictionary._get_word(word,"simp")
+                if simp != None:
+                    if jieba_words.get(simp) == None:
+                        trad = self.dictionary._get_word(word,"trad")
+                        jieba_words[simp] = ChineseNote(word,simp,trad,i,text,1)
+                        i += 1
+                    else:
+                        jieba_words[simp].incrCount()
         return jieba_words
 
     #param rel_path: relative path to unzipped epub director containing a bunch of xhtml
@@ -27,23 +55,23 @@ class TextScanner:
         #directory_in_str = "./epubfile/"
         directory = os.fsencode(rel_path)
 
-        booktext = ""
+        booktext = []
         for file in os.listdir(directory):
              filename = os.fsdecode(file)
-             if filename.endswith(".xhtml"):
+             if filename.endswith(".xhtml") or filename.endswith(".txt"):
                 with open(rel_path+filename, 'r') as file:
-                    data = file.read().replace('\n', '')
-                    booktext += data
+                    data = file.read().replace('\n', '').strip().split("。")
+                    booktext.append(data)
              else:
                  continue
-        return self.parse_string_with_jieba(booktext)
+        return self.parse_sentences_with_jieba(booktext)
 
 
     def parse_single_file_to_dict(self, rel_path):
         #https://stackoverflow.com/questions/3114786/python-library-to-extract-epub-information/3114929
         with open(rel_path, 'r') as file:
-            booktext = file.read().replace('\n', '')
-        return self.parse_string_with_jieba(booktext)
+            booktext = file.read().replace('\n', '').strip().split("。")
+        return self.parse_sentences_with_jieba(booktext)
 
 
     '''
@@ -56,6 +84,7 @@ class TextScanner:
       sql TEXT
     );
     '''
+    ## just a debugging method to explore anki file
     def query_anki_db(self, query = 1):
         db_path = self.anki_db_file_path
         conn = connect(db_path)
@@ -71,13 +100,13 @@ class TextScanner:
         c.execute(query)
         already_have_words = {}
         for row in c:
-            print("row",row)
-            ''' # use for sqlite_master
-            print("row",row[1],row[1],row[2],row[3])
-            sub_row = row[4].split("\n")
-            for sub in sub_row:
-                print("subrow:",sub)
-            '''
+            if query == 'select * from sqlite_master':
+                print("row",row[1],row[1],row[2],row[3])
+                sub_row = row[4].split("\n")
+                for sub in sub_row:
+                    print("subrow:",sub)
+            else:
+                print("row",row)
 
     '''
     file_path: path to an anki2 file, which is a sqllite file that
@@ -92,13 +121,23 @@ class TextScanner:
         conn = connect(db_path)
         c = conn.cursor()
 
-        query = "select distinct flds from notes where tags not like '%HSK6%' "
+        query = "select flds, tags from notes"
         c.execute(query)
         already_have_words = {}
         for row in c:
-            word = row[0].split("\x1f")[self.anki_note_key_index]
-            #print("\nparsed", word, row)
-            already_have_words[word] = (None,None)
+            note_fields = row[0].split("\x1f")
+            tags = row[1].split()
+            exclude = False
+            for exlcude in self.tags_to_exclude:
+                if exlcude in tags:
+                    exclude = True
+            if exclude == False:
+                for idx in self.anki_note_indices:
+                    word = note_fields[idx]
+                    simp = self.dictionary._get_word(word,"simp")
+                    if simp != None and already_have_words.get(simp) == None:
+                        trad = self.dictionary._get_word(word,"trad")
+                        already_have_words[simp] = ChineseNote(word,simp,trad)
         return already_have_words
 
     ##############################
@@ -107,30 +146,30 @@ class TextScanner:
     def get_leftdiff_and_intersect(self, scanned_words, dedupe_list):
         leftdiff = {}
         intersect = {}
-        for word in scanned_words:
-            if dedupe_list.get(word) == None:
+        for simp in scanned_words:
+            if dedupe_list.get(simp) == None:
                 #definition = self.dictionary.get_definitions(word,"en")
-                leftdiff[word] = (word,None)
+                leftdiff[simp] = scanned_words[simp]
 
-            if dedupe_list.get(word) != None:
+            if dedupe_list.get(simp) != None:
                 #definition = self.dictionary.get_definitions(word,"en")
-                intersect[word] = (word,None)
+                intersect[simp] = scanned_words[simp]
         return leftdiff, intersect
 
     def parse_chars_from_dict(self, dict):
         char_dict = {}
         for word in dict:
-            for char in word:
-                char_dict[char] = (char,None)
+            for char in dict[word].simplified:
+                char_dict[char] = char
         return char_dict
 
     # only return the subset of words that have a char from chars
     def get_words_using_chars(self, words, chars):
         new_char_words = {}
         for word in words:
-            for char in word:
+            for char in words[word].simplified:
                 if chars.get(char) != None:
-                    new_char_words[word] = word
+                    new_char_words[word] = words[word]
         return new_char_words
 
 
@@ -138,13 +177,15 @@ class TextScanner:
     ### printing / entrypoint funtions
 
     def print_comparison_stats(self, leftname, rightname, left, right, new, overlap, noun):
-        #print(len(right), f' {noun} in dedupe list {rightname}')
-        print(len(left), f" {noun} in {leftname}")
-        #print("random word from those found:",list(jieba_words.values())[35])
-        #print(len(overlap), f" overlap {noun}")
-        print(len(new), f" new {noun}")
-        #print("\nrandom new word:",list(new_words.values())[36])
-        #print("\noverlap words:", overlap_words.keys())
+        import json
+        print()
+        print(len(right), f' {noun}s in dedupe list {rightname}')
+        print(len(left), f" {noun}s in {leftname}")
+        #print("random word from those found:",str(list(left.values())[35]))
+        print(len(overlap), f" overlap {noun}s")
+        print(len(new), f" new {noun}s")
+        #print(f"\nrandom new {noun}:",str(list(new.values())[36]))
+        #print("\noverlap words:", overlap.keys())
 
     def scan_and_compare(self, text_path, file_or_dir="file"):
         anki_words = self.load_words_from_anki_notes()
@@ -163,8 +204,11 @@ class TextScanner:
             file_or_dir
         )
         print(f"\n{text_path}")
-        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "words")
-        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "chars")
+        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "word")
+        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "char")
         new_char_words = self.get_words_using_chars(left_diff,char_diff)
         print(len(new_char_words),"words using new chars")
+        if len(new_char_words) >=36:
+            print("\nrandom new word:",str(list(new_char_words.values())[36]))
+
         return new_char_words, left_diff, char_diff
