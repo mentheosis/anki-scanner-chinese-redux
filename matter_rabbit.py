@@ -39,7 +39,15 @@ nm = NoteMaker(dictionary, media_dir_path)
 
 # run
 new_char_words, new_words, new_chars = sc.scan_and_print(text_to_scan, file_or_dir)
-nm.make_notes(new_char_words, output_deck_name, output_apk_path, tag_for_cards, include_sound=True)
+#nm.make_notes(new_char_words, output_deck_name, output_apk_path, tag_for_cards, include_sound=True)
+
+ct = 0
+for word in new_char_words:
+    if new_char_words[word].count > 1:
+        ct += 1
+        print("\n\nword",new_char_words[word])
+
+print("\w words appearing more than once:", ct)
 
 #sc.query_anki_db("select * from notes")
 #sc.query_anki_db("select * from sqlite_master")

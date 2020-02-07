@@ -1,5 +1,6 @@
 import os
 import jieba
+import re
 from sqlite3 import connect
 
 class ChineseNote:
@@ -60,7 +61,7 @@ class TextScanner:
              filename = os.fsdecode(file)
              if filename.endswith(".xhtml") or filename.endswith(".txt"):
                 with open(rel_path+filename, 'r') as file:
-                    data = file.read().replace('\n', '').strip().split("。")
+                    data = re.split("[。，！？]",file.read().replace('\n', '').strip())
                     booktext.append(data)
              else:
                  continue
@@ -70,7 +71,7 @@ class TextScanner:
     def parse_single_file_to_dict(self, rel_path):
         #https://stackoverflow.com/questions/3114786/python-library-to-extract-epub-information/3114929
         with open(rel_path, 'r') as file:
-            booktext = file.read().replace('\n', '').strip().split("。")
+            booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
         return self.parse_sentences_with_jieba(booktext)
 
 
