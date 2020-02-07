@@ -1,4 +1,5 @@
 from chinese.database import Dictionary
+from chinese.config import ConfigManager
 from chinese.mr_text_scanner import TextScanner
 from chinese.mr_note_maker import NoteMaker
 from os.path import dirname, join, realpath
@@ -38,16 +39,21 @@ sc = TextScanner(dictionary, anki_db_path, field_indices_to_use_in_anki_note, an
 nm = NoteMaker(dictionary, media_dir_path)
 
 # run
-new_char_words, new_words, new_chars = sc.scan_and_print(text_to_scan, file_or_dir)
+#new_char_words, new_words, new_chars = sc.scan_and_print(text_to_scan, file_or_dir)
 #nm.make_notes(new_char_words, output_deck_name, output_apk_path, tag_for_cards, include_sound=True)
 
-ct = 0
-for word in new_char_words:
-    if new_char_words[word].count > 1:
-        ct += 1
-        print("\n\nword",new_char_words[word])
+#ct = 0
+#for word in new_char_words:
+#    if new_char_words[word].count > 1:
+#        ct += 1
+#        print("\n\nword",new_char_words[word])
 
-print("\w words appearing more than once:", ct)
+#print("\n words appearing more than once:", ct)
+
+
+#config = ConfigManager()
+#print("\nconfig test", config['textScanner']['anki_db_path']['val'])
+
 
 #sc.query_anki_db("select * from notes")
 #sc.query_anki_db("select * from sqlite_master")

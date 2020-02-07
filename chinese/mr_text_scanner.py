@@ -24,11 +24,12 @@ class ChineseNote:
 
 
 class TextScanner:
-    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[]):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], outputQTTextBrowser=None):
         self.dictionary = dictionary
         self.anki_db_file_path = anki_db_file_path
         self.anki_note_indices = anki_note_indices
         self.tags_to_exclude = tags_to_exclude
+        self.outputQTTextBrowser = outputQTTextBrowser
 
     ##############################
     ### Input text functions
@@ -97,17 +98,17 @@ class TextScanner:
             #query = 'select * from notes'
             #query = 'select sql from SQLITE_MASTER where tbl_name = "notes"'
             query = "select distinct flds from notes where tags not like '%HSK6%' "
-        print("query",query)
+        self.printOrLog("query",query)
         c.execute(query)
         already_have_words = {}
         for row in c:
             if query == 'select * from sqlite_master':
-                print("row",row[1],row[1],row[2],row[3])
+                self.printOrLog("row",row[1],row[1],row[2],row[3])
                 sub_row = row[4].split("\n")
                 for sub in sub_row:
-                    print("subrow:",sub)
+                    self.printOrLog("subrow:",sub)
             else:
-                print("row",row)
+                self.printOrLog("row",row)
 
     '''
     file_path: path to an anki2 file, which is a sqllite file that
@@ -177,16 +178,22 @@ class TextScanner:
     ##############################
     ### printing / entrypoint funtions
 
+    def printOrLog(self,text=""):
+        if self.outputQTTextBrowser != None:
+            self.outputQTTextBrowser.append(text)
+        else:
+            print(text)
+
     def print_comparison_stats(self, leftname, rightname, left, right, new, overlap, noun):
         import json
-        print()
-        print(len(right), f' {noun}s in dedupe list {rightname}')
-        print(len(left), f" {noun}s in {leftname}")
-        #print("random word from those found:",str(list(left.values())[35]))
-        print(len(overlap), f" overlap {noun}s")
-        print(len(new), f" new {noun}s")
-        #print(f"\nrandom new {noun}:",str(list(new.values())[36]))
-        #print("\noverlap words:", overlap.keys())
+        self.printOrLog()
+        self.printOrLog(f'{len(right)} {noun}s in dedupe list {rightname}')
+        self.printOrLog(f"{len(left)} {noun}s in {leftname}")
+        #self.printOrLog("random word from those found:",str(list(left.values())[35]))
+        self.printOrLog(f"{len(overlap)} overlap {noun}s")
+        self.printOrLog(f"{len(new)} new {noun}s")
+        #self.printOrLog(f"\nrandom new {noun}:",str(list(new.values())[36]))
+        #self.printOrLog("\noverlap words:", overlap.keys())
 
     def scan_and_compare(self, text_path, file_or_dir="file"):
         anki_words = self.load_words_from_anki_notes()
@@ -204,12 +211,13 @@ class TextScanner:
             text_path,
             file_or_dir
         )
-        print(f"\n{text_path}")
+
+        self.printOrLog(f"\n{text_path}")
         self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "word")
         self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "char")
         new_char_words = self.get_words_using_chars(left_diff,char_diff)
-        print(len(new_char_words),"words using new chars")
+        self.printOrLog(f"{len(new_char_words)} words using new chars")
         if len(new_char_words) >=36:
-            print("\nrandom new word:",str(list(new_char_words.values())[36]))
+            self.printOrLog(f"\nrandom new word: {str(list(new_char_words.values())[36])}")
 
         return new_char_words, left_diff, char_diff

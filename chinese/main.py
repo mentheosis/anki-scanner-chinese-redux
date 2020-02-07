@@ -21,7 +21,7 @@ from anki.stats import CollectionStats
 from anki.stdmodels import models
 from aqt import mw
 
-from singletons import dictionary, config
+from .singletons import dictionary, config
 
 from .edit import append_tone_styling, EditManager
 from .graph import todayStats
