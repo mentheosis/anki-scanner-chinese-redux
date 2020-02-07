@@ -12,3 +12,4 @@ text-files/
 *.apkg
 packaged-libs
 chinese/lib
+chinese/orig_lib
