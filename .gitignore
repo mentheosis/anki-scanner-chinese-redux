@@ -10,3 +10,5 @@ chinese/meta.json
 chinese/config_saved.json
 text-files/
 *.apkg
+./packaged-libs
+./chinese/lib
