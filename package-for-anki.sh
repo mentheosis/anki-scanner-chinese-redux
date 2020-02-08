@@ -12,7 +12,7 @@ for i in ./*; do
         fi
     done
     if [[ $doit == "T" ]]; then
-        zip -r "../${zipfilename}" $i -x "*.mp3"
+        zip -r "../${zipfilename}" $i -x "*.mp3" -x "*__pycache__*"
     fi
 done
 echo "done"
