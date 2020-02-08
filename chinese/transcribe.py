@@ -57,8 +57,12 @@ def is_sentence(s):
     return False
 
 
-def transcribe(words, target, type_):
+def transcribe(words, target, type_, externalDictionary=None):
     assert isinstance(words, list)
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
 
     if target == 'pinyin':
         prefer_tw = False
@@ -80,9 +84,9 @@ def transcribe(words, target, type_):
             continue
 
         if target in ['pinyin', 'pinyin_tw', 'bopomofo']:
-            s = dictionary.get_pinyin(text, type_, prefer_tw)
+            s = d.get_pinyin(text, type_, prefer_tw)
         elif target == 'jyutping':
-            s = dictionary.get_cantonese(text, type_)
+            s = d.get_cantonese(text, type_)
 
         if target == 'bopomofo':
             transcribed.extend(bopomofo([s]))
@@ -92,15 +96,20 @@ def transcribe(words, target, type_):
     return convert_punc(transcribed)
 
 
-def transcribe_char(hanzi, target, type_):
+def transcribe_char(hanzi, target, type_, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+
     if target == 'pinyin':
-        return dictionary.get_pinyin(hanzi, type_)
+        return d.get_pinyin(hanzi, type_)
     if target == 'pinyin_tw':
-        return dictionary.get_pinyin(hanzi, type_, prefer_tw=True)
+        return d.get_pinyin(hanzi, type_, prefer_tw=True)
     if target == 'jyutping':
-        return dictionary.get_cantonese(hanzi, type_)
+        return d.get_cantonese(hanzi, type_)
     if target == 'bopomofo':
-        return bopomofo(dictionary.get_pinyin(hanzi, type_, prefer_tw=True))
+        return bopomofo(d.get_pinyin(hanzi, type_, prefer_tw=True))
 
     raise NotImplementedError(target)
 

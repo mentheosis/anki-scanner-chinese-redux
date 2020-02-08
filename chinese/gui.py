@@ -24,17 +24,7 @@ from anki.lang import _
 from aqt import mw
 from aqt.utils import openLink
 
-'''
 from .about import CSR_GITHUB_URL, showAbout
-from .fill import (
-    bulk_fill_classifiers,
-    bulk_fill_defs,
-    bulk_fill_hanzi,
-    bulk_fill_transcript,
-    bulk_fill_silhouette,
-    bulk_fill_sound,
-)
-'''
 
 from .mr_scanner_ui import showTextScanner
 from .main import config
@@ -57,10 +47,20 @@ PHONETIC_TARGETS = {
 
 
 def load_menu():
-    add_menu('MatterRabbit')
-    add_menu_item('MatterRabbit', _('Scan text'), showTextScanner)
+    add_menu('TextScan扫描')
+    add_menu_item('TextScan扫描', _('Scan text'), showTextScanner)
+    add_menu_item('TextScan扫描', _('About this addon'), showAbout)
 
     '''
+    for k, v in SPEECH_ENGINES.items():
+        add_menu_item(
+            'TextScan扫描::Speech Engine',
+            k,
+            partial(config.update, {'speech': v}),
+            checkable=True,
+            checked=bool(config['speech'] == v),
+        )
+
     for k, v in PHONETIC_TARGETS.items():
         add_menu_item(
             'MatterRabbit::Phonetics',
@@ -68,15 +68,6 @@ def load_menu():
             partial(config.update, {'target': v}),
             checkable=True,
             checked=bool(config['target'] == v),
-        )
-
-    for k, v in SPEECH_ENGINES.items():
-        add_menu_item(
-            'MatterRabbit::Speech Engine',
-            k,
-            partial(config.update, {'speech': v}),
-            checkable=True,
-            checked=bool(config['speech'] == v),
         )
 
     add_menu('MatterRabbit::Bulk Fill')
@@ -95,7 +86,6 @@ def load_menu():
         _('Report a bug or make a feature request'),
         lambda: openLink(CSR_GITHUB_URL + '/issues'),
     )
-    add_menu_item('MatterRabbit::Help', _('About...'), showAbout)
     '''
 
 def unload_menu():

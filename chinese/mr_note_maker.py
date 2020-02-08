@@ -1,13 +1,14 @@
 import genanki
-from os.path import join
+from os.path import dirname, join, realpath
 from .freq import get_frequency
 from .behavior import get_classifier, find_colors
 from .sound import sound_with_path
 
 class NoteMaker:
-    def __init__(self, dictionary, external_media_path):
+    def __init__(self, dictionary, external_media_path, emitter=None):
         self.dictionary = dictionary
         self.external_media_path = external_media_path
+        self.emitter = emitter
         self.note_model = genanki.Model(
             1091735104,
             'Import only model',
@@ -39,6 +40,12 @@ class NoteMaker:
                         .tone4 {color: #42a7f9;}
                         .tone5 {color: gray;}'''
             }])
+
+    def printOrLog(self,text=""):
+        if self.emitter != None:
+            self.emitter.emit(text)
+        else:
+            print(text)
 
     def try_find_definition_by_char(self,word):
         lookup = self.dictionary.get_definitions(word,"en")
@@ -73,13 +80,13 @@ class NoteMaker:
         sentence_pinyin = self.dictionary.get_pinyin(rawNote.sentence,'simp')
         sentence_color_pinyin = find_colors(sentence_pinyin,{"pinyin":sentence_pinyin})
 
-        classifier = get_classifier(rawNote.word, [])
+        classifier = get_classifier(rawNote.word, [], self.dictionary)
         color = find_colors(rawNote.word,{"pinyin":pinyin})
         frequency = get_frequency(rawNote.word)
 
         sound=''
         media_path = ''
-        if include_sound:
+        if include_sound == True:
             #"google|zh-cn"
             #"google|zh-tw"
             sound, media_path = self.find_sound(rawNote.word,"google|zh-tw")
@@ -89,29 +96,29 @@ class NoteMaker:
                 classifier, color, rawNote.sentence, sentence_color_pinyin,
                 str(rawNote.sort_order), frequency]
         assert len(res) == len(self.note_model.fields)
-        return res, join(self.external_media_path,media_path)
+        return res, join(dirname(realpath(__file__)),self.external_media_path,media_path)
 
     # @param rawNoteDict should be a dictionary of ChineseNote objects from ./mr_text_scanner.py
     def make_notes(self, rawNoteDict, deck_name, out_path, tag, include_sound=False):
         deck = genanki.Deck(
-            2059400110,
+            2051337110,
             deck_name
         )
 
-        print("\nNote maker is now gathering enrichment data for the words, this may take a while...")
+        self.printOrLog("\nNote maker is now gathering enrichment data for the words, this may take a while, especially if you are including audio files. The scanner will update progress here every 25 words...")
         i = 0
         media_paths = []
         for simp in rawNoteDict:
             i+=1
             if i%25 == 0:
-                print(f"{i} words enriched")
+                self.printOrLog(f"{i} words enriched")
             note, media_path = self.enrich_word(rawNoteDict[simp], include_sound)
             media_paths.append(media_path)
             deck.add_note(genanki.Note( self.note_model, note, tags=[tag]))
 
-        print("Note maker is making a package")
+        self.printOrLog("Note maker is making a package")
         apkg = genanki.Package(deck)
         if include_sound == True:
             apkg.media_files = media_paths
         apkg.write_to_file(out_path)
-        print("Note maker wrote to",out_path)
+        self.printOrLog(f"Note maker wrote {len(rawNoteDict)} new notes to to {join(dirname(realpath(__file__)),out_path)}")

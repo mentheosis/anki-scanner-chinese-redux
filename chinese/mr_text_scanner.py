@@ -1,4 +1,5 @@
 import os
+from os.path import dirname, join, realpath
 import jieba
 import re
 from sqlite3 import connect
@@ -24,12 +25,18 @@ class ChineseNote:
 
 
 class TextScanner:
-    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], outputQTTextBrowser=None):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], emitter=None):
         self.dictionary = dictionary
         self.anki_db_file_path = anki_db_file_path
         self.anki_note_indices = anki_note_indices
         self.tags_to_exclude = tags_to_exclude
-        self.outputQTTextBrowser = outputQTTextBrowser
+        self.emitter = emitter
+
+    def printOrLog(self,text=""):
+        if self.emitter != None:
+            self.emitter.emit(text)
+        else:
+            print(text)
 
     ##############################
     ### Input text functions
@@ -71,8 +78,13 @@ class TextScanner:
 
     def parse_single_file_to_dict(self, rel_path):
         #https://stackoverflow.com/questions/3114786/python-library-to-extract-epub-information/3114929
-        with open(rel_path, 'r') as file:
-            booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
+        path = join(dirname(realpath(__file__)),rel_path)
+        try:
+            with open(path, 'r') as file:
+                booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
+        except:
+            self.printOrLog(f"Could not open the file {path}, make sure it exists.")
+            return {}
         return self.parse_sentences_with_jieba(booktext)
 
 
@@ -119,9 +131,13 @@ class TextScanner:
             usually 0 or 1
     '''
     def load_words_from_anki_notes(self):
-        db_path = self.anki_db_file_path
-        conn = connect(db_path)
-        c = conn.cursor()
+        try:
+            db_path = self.anki_db_file_path
+            conn = connect(db_path)
+            c = conn.cursor()
+        except:
+            self.printOrLog("Could not open your anki collection, try changing the anki_db_path in the config file of this addon.")
+            return {}
 
         query = "select flds, tags from notes"
         c.execute(query)
@@ -130,8 +146,10 @@ class TextScanner:
             note_fields = row[0].split("\x1f")
             tags = row[1].split()
             exclude = False
-            for exlcude in self.tags_to_exclude:
-                if exlcude in tags:
+            for tag in self.tags_to_exclude:
+                # tags should already be stripped of white spaces
+                #tag = tag.strip()
+                if tag in tags:
                     exclude = True
             if exclude == False:
                 for idx in self.anki_note_indices:
@@ -178,14 +196,7 @@ class TextScanner:
     ##############################
     ### printing / entrypoint funtions
 
-    def printOrLog(self,text=""):
-        if self.outputQTTextBrowser != None:
-            self.outputQTTextBrowser.append(text)
-        else:
-            print(text)
-
     def print_comparison_stats(self, leftname, rightname, left, right, new, overlap, noun):
-        import json
         self.printOrLog()
         self.printOrLog(f'{len(right)} {noun}s in dedupe list {rightname}')
         self.printOrLog(f"{len(left)} {noun}s in {leftname}")

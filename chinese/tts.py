@@ -8,7 +8,7 @@
 
 from .aws import AWS4Signer
 
-from os.path import basename, exists, join
+from os.path import basename, exists, dirname, join, realpath
 from re import sub
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -36,7 +36,7 @@ class AudioDownloader:
             self.sanitize(self.text), self.service, self.lang
         )
         if self.external_media_path != None:
-            return join(self.external_media_path, filename)
+            return join(dirname(realpath(__file__)),self.external_media_path, filename)
         else:
             from aqt import mw
             return join(mw.col.media.dir(), filename)

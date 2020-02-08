@@ -7,15 +7,19 @@
     "textScanner": {
         "anki_db_path":{
             "doc": "Path to the anki2 db file, or to any anki2 file such as from an unzipped .apkg file",
-            "val":"/home/kris/.local/share/Anki2/User 1/collection.anki2"
+            "val":"../../User 1/collection.anki2"
         },
         "anki_db_field_indices":{
             "doc": "These are the field indices that will be checked in the anki notes table for existing words",
             "val": [0,1]
         },
+        "include_sound":{
+            "doc": "True to download and include sound files, otherwise False",
+            "val": true
+        },
         "media_dir_path":{
             "doc": "Path to a directory which must already exist to hold note media files for bundling to an import .apkg",
-            "val": "./media_files.anki2"
+            "val": "./media_files/"
         },
         "anki_tags_to_exclude":{
             "doc": "A comma separated list of tag strings (which cannot contain spaces). Notes with these tags will not be considered when de-deping to create new notes",
@@ -27,7 +31,7 @@
         },
         "tag_for_new_cards":{
             "doc": "An anki tag string that will be written onto all the new notes generated. Tags cannot contain spaces",
-            "val": "imported_notes_test"
+            "val": "scanner_import"
         },
         "file_or_dir":{
             "doc": "Indicates whether the scanner will read a single file, or will loop through all .txt or .xhtml files in a director. Value can be 'file' or 'dir'",
@@ -35,7 +39,7 @@
         },
         "file_to_scan":{
             "doc": "The path to the text that is to be scanned. This can also be a director path if you change the file_or_dir config to dir",
-            "val": "/home/kris/py-stuff/chinese/chinese-support-redux/text-files/liulangdiqiu_liucixin.txt"
+            "val": "./media_files/demo.txt"
         }
     },
     "fields": {
