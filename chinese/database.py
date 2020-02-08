@@ -220,7 +220,7 @@ class Dictionary:
                 'SELECT DISTINCT classifiers FROM cidian '
                 'WHERE (traditional = :word OR simplified = :word)'
             ),
-            {'word': word},
+            {'word': 'hi'},
         )
         cs = list(filter(None, [c for (c,) in self.c.fetchall()]))
         return ','.join(cs).split(',') if cs else []

@@ -40,16 +40,24 @@ from .util import (
 )
 
 
-def get_classifier(hanzi, note):
-    cs = dictionary.get_classifiers(hanzi)
+def get_classifier(hanzi, note, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+    cs = d.get_classifiers(hanzi)
     text = ', '.join(colorize_dict(c) for c in cs)
     if text and not has_any_field(config['fields']['classifier'], note):
         return '<br>Cl: ' + text
     return ''
 
 
-def fill_classifier(hanzi, note):
-    cs = dictionary.get_classifiers(hanzi)
+def fill_classifier(hanzi, note, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+    cs = d.get_classifiers(hanzi)
     text = ', '.join(colorize_dict(c) for c in cs)
     filled = False
     if text and has_any_field(config['fields']['classifier'], note):
@@ -58,8 +66,12 @@ def fill_classifier(hanzi, note):
     return filled
 
 
-def get_alt(hanzi, note):
-    alts = dictionary.get_variants(hanzi)
+def get_alt(hanzi, note, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+    alts = d.get_variants(hanzi)
     alt = ', '.join(colorize_dict(a) for a in alts)
     if alt:
         if not has_any_field(config['fields']['alternative'], note):

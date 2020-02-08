@@ -25,14 +25,8 @@ from aqt import mw
 from aqt.utils import openLink
 
 from .about import CSR_GITHUB_URL, showAbout
-from .fill import (
-    bulk_fill_classifiers,
-    bulk_fill_defs,
-    bulk_fill_hanzi,
-    bulk_fill_transcript,
-    bulk_fill_silhouette,
-    bulk_fill_sound,
-)
+
+from .mr_scanner_ui import showTextScanner
 from .main import config
 
 
@@ -53,48 +47,46 @@ PHONETIC_TARGETS = {
 
 
 def load_menu():
-    for k, v in PHONETIC_TARGETS.items():
-        add_menu_item(
-            'Chinese::Phonetics',
-            k,
-            partial(config.update, {'target': v}),
-            checkable=True,
-            checked=bool(config['target'] == v),
-        )
+    add_menu('TextScan扫描')
+    add_menu_item('TextScan扫描', _('Scan text'), showTextScanner)
+    add_menu_item('TextScan扫描', _('About this addon'), showAbout)
 
+    '''
     for k, v in SPEECH_ENGINES.items():
         add_menu_item(
-            'Chinese::Speech Engine',
+            'TextScan扫描::Speech Engine',
             k,
             partial(config.update, {'speech': v}),
             checkable=True,
             checked=bool(config['speech'] == v),
         )
 
-    add_menu('Chinese::Bulk Fill')
-    add_menu_item('Chinese::Bulk Fill', _('Hanzi'), bulk_fill_hanzi)
+    for k, v in PHONETIC_TARGETS.items():
+        add_menu_item(
+            'MatterRabbit::Phonetics',
+            k,
+            partial(config.update, {'target': v}),
+            checkable=True,
+            checked=bool(config['target'] == v),
+        )
+
+    add_menu('MatterRabbit::Bulk Fill')
+    add_menu_item('MatterRabbit::Bulk Fill', _('Hanzi'), bulk_fill_hanzi)
     add_menu_item(
-        'Chinese::Bulk Fill', _('Transcription'), bulk_fill_transcript
+        'MatterRabbit::Bulk Fill', _('Transcription'), bulk_fill_transcript
     )
-    add_menu_item('Chinese::Bulk Fill', _('Definitions'), bulk_fill_defs)
-    add_menu_item('Chinese::Bulk Fill', _('Classifiers'), bulk_fill_classifiers)
-    add_menu_item('Chinese::Bulk Fill', _('Sound'), bulk_fill_sound)
-    add_menu_item('Chinese::Bulk Fill', _('Silhouette'), bulk_fill_silhouette)
+    add_menu_item('MatterRabbit::Bulk Fill', _('Definitions'), bulk_fill_defs)
+    add_menu_item('MatterRabbit::Bulk Fill', _('Classifiers'), bulk_fill_classifiers)
+    add_menu_item('MatterRabbit::Bulk Fill', _('Sound'), bulk_fill_sound)
+    add_menu_item('MatterRabbit::Bulk Fill', _('Silhouette'), bulk_fill_silhouette)
 
-
-    add_menu('Chinese::Text Scanner')
-    add_menu_item('Chinese::Text Scanner', _('Scan text'), showAbout)
-
-
-
-    add_menu('Chinese::Help')
+    add_menu('MatterRabbit::Help')
     add_menu_item(
-        'Chinese::Help',
+        'MatterRabbit::Help',
         _('Report a bug or make a feature request'),
         lambda: openLink(CSR_GITHUB_URL + '/issues'),
     )
-    add_menu_item('Chinese::Help', _('About...'), showAbout)
-
+    '''
 
 def unload_menu():
     for menu in mw.custom_menus.values():

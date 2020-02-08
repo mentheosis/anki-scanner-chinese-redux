@@ -1,4 +1,5 @@
 import os
+from os.path import dirname, join, realpath
 import jieba
 import re
 from sqlite3 import connect
@@ -24,11 +25,18 @@ class ChineseNote:
 
 
 class TextScanner:
-    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[]):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], emitter=None):
         self.dictionary = dictionary
         self.anki_db_file_path = anki_db_file_path
         self.anki_note_indices = anki_note_indices
         self.tags_to_exclude = tags_to_exclude
+        self.emitter = emitter
+
+    def printOrLog(self,text=""):
+        if self.emitter != None:
+            self.emitter.emit(text)
+        else:
+            print(text)
 
     ##############################
     ### Input text functions
@@ -70,8 +78,13 @@ class TextScanner:
 
     def parse_single_file_to_dict(self, rel_path):
         #https://stackoverflow.com/questions/3114786/python-library-to-extract-epub-information/3114929
-        with open(rel_path, 'r') as file:
-            booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
+        path = join(dirname(realpath(__file__)),rel_path)
+        try:
+            with open(path, 'r') as file:
+                booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
+        except:
+            self.printOrLog(f"Could not open the file {path}, make sure it exists.")
+            return {}
         return self.parse_sentences_with_jieba(booktext)
 
 
@@ -97,17 +110,17 @@ class TextScanner:
             #query = 'select * from notes'
             #query = 'select sql from SQLITE_MASTER where tbl_name = "notes"'
             query = "select distinct flds from notes where tags not like '%HSK6%' "
-        print("query",query)
+        self.printOrLog("query",query)
         c.execute(query)
         already_have_words = {}
         for row in c:
             if query == 'select * from sqlite_master':
-                print("row",row[1],row[1],row[2],row[3])
+                self.printOrLog("row",row[1],row[1],row[2],row[3])
                 sub_row = row[4].split("\n")
                 for sub in sub_row:
-                    print("subrow:",sub)
+                    self.printOrLog("subrow:",sub)
             else:
-                print("row",row)
+                self.printOrLog("row",row)
 
     '''
     file_path: path to an anki2 file, which is a sqllite file that
@@ -118,9 +131,13 @@ class TextScanner:
             usually 0 or 1
     '''
     def load_words_from_anki_notes(self):
-        db_path = self.anki_db_file_path
-        conn = connect(db_path)
-        c = conn.cursor()
+        try:
+            db_path = self.anki_db_file_path
+            conn = connect(db_path)
+            c = conn.cursor()
+        except:
+            self.printOrLog("Could not open your anki collection, try changing the anki_db_path in the config file of this addon.")
+            return {}
 
         query = "select flds, tags from notes"
         c.execute(query)
@@ -129,8 +146,10 @@ class TextScanner:
             note_fields = row[0].split("\x1f")
             tags = row[1].split()
             exclude = False
-            for exlcude in self.tags_to_exclude:
-                if exlcude in tags:
+            for tag in self.tags_to_exclude:
+                # tags should already be stripped of white spaces
+                #tag = tag.strip()
+                if tag in tags:
                     exclude = True
             if exclude == False:
                 for idx in self.anki_note_indices:
@@ -178,15 +197,14 @@ class TextScanner:
     ### printing / entrypoint funtions
 
     def print_comparison_stats(self, leftname, rightname, left, right, new, overlap, noun):
-        import json
-        print()
-        print(len(right), f' {noun}s in dedupe list {rightname}')
-        print(len(left), f" {noun}s in {leftname}")
-        #print("random word from those found:",str(list(left.values())[35]))
-        print(len(overlap), f" overlap {noun}s")
-        print(len(new), f" new {noun}s")
-        #print(f"\nrandom new {noun}:",str(list(new.values())[36]))
-        #print("\noverlap words:", overlap.keys())
+        self.printOrLog()
+        self.printOrLog(f'{len(right)} {noun}s in dedupe list {rightname}')
+        self.printOrLog(f"{len(left)} {noun}s in {leftname}")
+        #self.printOrLog("random word from those found:",str(list(left.values())[35]))
+        self.printOrLog(f"{len(overlap)} overlap {noun}s")
+        self.printOrLog(f"{len(new)} new {noun}s")
+        #self.printOrLog(f"\nrandom new {noun}:",str(list(new.values())[36]))
+        #self.printOrLog("\noverlap words:", overlap.keys())
 
     def scan_and_compare(self, text_path, file_or_dir="file"):
         anki_words = self.load_words_from_anki_notes()
@@ -204,12 +222,13 @@ class TextScanner:
             text_path,
             file_or_dir
         )
-        print(f"\n{text_path}")
+
+        self.printOrLog(f"\n{text_path}")
         self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "word")
         self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "char")
         new_char_words = self.get_words_using_chars(left_diff,char_diff)
-        print(len(new_char_words),"words using new chars")
+        self.printOrLog(f"{len(new_char_words)} words using new chars")
         if len(new_char_words) >=36:
-            print("\nrandom new word:",str(list(new_char_words.values())[36]))
+            self.printOrLog(f"\nrandom new word: {str(list(new_char_words.values())[36])}")
 
         return new_char_words, left_diff, char_diff

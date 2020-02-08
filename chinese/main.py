@@ -1,3 +1,5 @@
+# Modified by mentheosis@gmail.com 2020-02 for "Chinese-Text-Scanner" anki addon
+#
 # Copyright © 2017-2018 Joseph Lorimer <joseph@lorimer.me>
 #
 # This file is part of Chinese Support Redux.
@@ -16,44 +18,17 @@
 # Chinese Support Redux.  If not, see <https://www.gnu.org/licenses/>.
 
 from anki.hooks import addHook, wrap
-from anki.lang import _
-from anki.stats import CollectionStats
-from anki.stdmodels import models
 from aqt import mw
 
-from singletons import dictionary, config
-
-from .edit import append_tone_styling, EditManager
-from .graph import todayStats
+from .singletons import dictionary, config
 from .gui import load_menu, unload_menu
-from .models import advanced, basic
-from .templates import chinese, ruby
-
 
 if config['firstRun']:
     dictionary.create_indices()
     config['firstRun'] = False
 
-
 def load():
-    ruby.install()
-    chinese.install()
     addHook('profileLoaded', load_menu)
-    addHook('profileLoaded', add_models)
-    addHook('loadNote', append_tone_styling)
     addHook('unloadProfile', config.save)
     addHook('unloadProfile', dictionary.conn.close)
     addHook('unloadProfile', unload_menu)
-    CollectionStats.todayStats = wrap(
-        CollectionStats.todayStats, todayStats, 'around'
-    )
-    EditManager()
-
-
-def add_models():
-    models.append(('Chinese (Advanced)', advanced.add_model))
-    models.append(('Chinese (Basic)', basic.add_model))
-    if not mw.col.models.byName('Chinese (Advanced)'):
-        advanced.add_model(mw.col)
-    if not mw.col.models.byName('Chinese (Basic)'):
-        basic.add_model(mw.col)
