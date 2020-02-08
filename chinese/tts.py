@@ -8,22 +8,22 @@
 
 from .aws import AWS4Signer
 
-from os.path import basename, exists, join
+from os.path import basename, exists, dirname, join, realpath
 from re import sub
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 import requests
-from aqt import mw
 from gtts import gTTS
 
 requests.packages.urllib3.disable_warnings()
 
 
 class AudioDownloader:
-    def __init__(self, text, source='google|zh-cn'):
+    def __init__(self, text, source='google|zh-cn', external_media_path=None):
         self.text = text
         self.service, self.lang = source.split('|')
+        self.external_media_path = external_media_path
         self.path = self.get_path()
         self.func = {
             'google': self.get_google,
@@ -35,7 +35,11 @@ class AudioDownloader:
         filename = '{}_{}_{}.mp3'.format(
             self.sanitize(self.text), self.service, self.lang
         )
-        return join(mw.col.media.dir(), filename)
+        if self.external_media_path != None:
+            return join(dirname(realpath(__file__)),self.external_media_path, filename)
+        else:
+            from aqt import mw
+            return join(mw.col.media.dir(), filename)
 
     def sanitize(self, s):
         return sub(r'[/:*?"<>|]', '', s)

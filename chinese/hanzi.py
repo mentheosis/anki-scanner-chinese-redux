@@ -21,7 +21,7 @@ from re import search, split, sub
 from jieba import cut
 
 from .consts import HANZI_RANGE
-from .main import config, dictionary
+from .singletons import config, dictionary
 from .util import cleanup, get_first
 
 

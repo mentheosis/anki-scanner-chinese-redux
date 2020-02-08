@@ -1,3 +1,5 @@
+# Modified by mentheosis@gmail.com 2020-02 for "Chinese-Text-Scanner" anki addon
+#
 # Copyright © 2017-2018 Joseph Lorimer <joseph@lorimer.me>
 #
 # This file is part of Chinese Support Redux.
@@ -21,7 +23,7 @@ from aqt import mw
 from ._version import __version__
 
 
-CSR_GITHUB_URL = 'https://github.com/luoliyan/chinese-support-redux'
+CSR_GITHUB_URL = 'https://github.com/mentheosis/anki-scanner-chinese-redux'
 
 
 def showAbout():
@@ -31,6 +33,8 @@ def showAbout():
     label.setStyleSheet('QLabel { font-size: 14px; }')
 
     contributors = [
+        'Kris Winquist',
+        'Rob Carr',
         'Alex Griffin',
         'Chris Hatch',
         'Roland Sieker',
@@ -38,16 +42,18 @@ def showAbout():
     ]
 
     text = '''
-<div style="font-weight: bold">Chinese Support Redux v%s</div><br>
+<div style="font-weight: bold">Chinese Text Scanner, based on Chinese Support Redux v%s</div><br>
 <div><span style="font-weight: bold">
-    Maintainer</span>: Joseph Lorimer &lt;joseph@lorimer.me&gt;</div>
-<div><span style="font-weight: bold">Contributors</span>: %s</div>
+    Maintainer</span>: Kris Winquist &lt;mentheosis@gmail.com&gt;</div>
 <div><span style="font-weight: bold">Website</span>: <a href="%s">%s</a></div>
-<div style="font-size: 12px">
-    <br>Based on the Chinese Support add-on by Thomas TEMPÉ and many others.
+<div>
+    <br> Powered by <a href="https://github.com/luoliyan/chinese-support-redux">Chinese-Support-Redux</a> by Joseph Lorimer <joseph@lorimer.me>
+    <br> which is based on the Chinese Support add-on by Thomas TEMPÉ and many others.
     <br>If your name is missing from here, please open an issue on GitHub.
+    <br>
+    <div>Contributors: %s</div>
 </div>
-''' % (__version__, ', '.join(contributors), CSR_GITHUB_URL, CSR_GITHUB_URL)
+''' % (__version__, CSR_GITHUB_URL, CSR_GITHUB_URL, ', '.join(contributors))
 
     label.setText(text)
     label.setOpenExternalLinks(True)

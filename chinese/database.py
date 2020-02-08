@@ -39,8 +39,8 @@ class Dictionary:
         self.conn.commit()
 
     def _get_word_pinyin(self, word, type_, prefer_tw=False, no_variants=True):
+        # this seems awkwardly placed here - cant move to head or it creates circular ref..
         from .transcribe import accentuate
-
         if type_ == 'trad':
             query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
         elif type_ == 'simp':
@@ -220,7 +220,7 @@ class Dictionary:
                 'SELECT DISTINCT classifiers FROM cidian '
                 'WHERE (traditional = :word OR simplified = :word)'
             ),
-            {'word': word},
+            {'word': 'hi'},
         )
         cs = list(filter(None, [c for (c,) in self.c.fetchall()]))
         return ','.join(cs).split(',') if cs else []

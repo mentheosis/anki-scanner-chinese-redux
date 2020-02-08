@@ -19,7 +19,7 @@
 from .color import colorize, colorize_dict, colorize_fuse
 from .freq import get_frequency
 from .hanzi import get_silhouette, get_simp, get_trad, split_hanzi
-from .main import config, dictionary
+from .singletons import config, dictionary
 from .sound import sound
 from .transcribe import (
     accentuate,
@@ -40,16 +40,24 @@ from .util import (
 )
 
 
-def get_classifier(hanzi, note):
-    cs = dictionary.get_classifiers(hanzi)
+def get_classifier(hanzi, note, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+    cs = d.get_classifiers(hanzi)
     text = ', '.join(colorize_dict(c) for c in cs)
     if text and not has_any_field(config['fields']['classifier'], note):
         return '<br>Cl: ' + text
     return ''
 
 
-def fill_classifier(hanzi, note):
-    cs = dictionary.get_classifiers(hanzi)
+def fill_classifier(hanzi, note, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+    cs = d.get_classifiers(hanzi)
     text = ', '.join(colorize_dict(c) for c in cs)
     filled = False
     if text and has_any_field(config['fields']['classifier'], note):
@@ -58,8 +66,12 @@ def fill_classifier(hanzi, note):
     return filled
 
 
-def get_alt(hanzi, note):
-    alts = dictionary.get_variants(hanzi)
+def get_alt(hanzi, note, externalDictionary=None):
+    if externalDictionary != None:
+        d = externalDictionary
+    else:
+        d = dictionary
+    alts = d.get_variants(hanzi)
     alt = ', '.join(colorize_dict(a) for a in alts)
     if alt:
         if not has_any_field(config['fields']['alternative'], note):
@@ -143,7 +155,7 @@ def reformat_transcript(note, group, target):
     set_all(config['fields'][group], note, to=hidden)
 
 
-def fill_color(hanzi, note):
+def find_colors(hanzi,note):
     if config['target'] in ['pinyin', 'pinyin_tw', 'bopomofo']:
         target = 'pinyin'
         field_group = 'pinyin'
@@ -158,8 +170,10 @@ def fill_color(hanzi, note):
     trans = split_transcript(' '.join(trans), target, grouped=False)
     hanzi = split_hanzi(cleanup(hanzi), grouped=False)
     colorized = colorize_fuse(hanzi, trans)
-    set_all(config['fields']['colorHanzi'], note, to=colorized)
+    return colorized
 
+def fill_color(hanzi, note):
+    set_all(config['fields']['colorHanzi'], note, to=find_colors(hanzi,note))
 
 def fill_sound(hanzi, note):
     updated = 0
