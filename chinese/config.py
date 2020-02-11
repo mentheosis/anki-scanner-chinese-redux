@@ -25,12 +25,20 @@ class ConfigManager:
     default_path = join(dirname(realpath(__file__)), 'config.json')
     saved_path = join(dirname(realpath(__file__)), 'config_saved.json')
 
+    def update_default_configs(self, default, saved):
+        for key in default["textScanner"]:
+            if saved["textScanner"].get(key) == None:
+                saved["textScanner"][key] = default["textScanner"][key]
+
     with open(default_path, encoding='utf-8') as f:
         config = defaultdict(str, load(f))
 
     if exists(saved_path):
         with open(saved_path, encoding='utf-8') as f:
             config_saved = defaultdict(str, load(f))
+            for key in config["textScanner"]:
+                if config_saved["textScanner"].get(key) == None:
+                    config_saved["textScanner"][key] = config["textScanner"][key]
         if config_saved['version'] == config['version']:
             config = config_saved
 

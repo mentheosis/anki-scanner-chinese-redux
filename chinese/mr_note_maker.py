@@ -5,10 +5,11 @@ from .behavior import get_classifier, find_colors
 from .sound import sound_with_path
 
 class NoteMaker:
-    def __init__(self, dictionary, external_media_path, emitter=None):
+    def __init__(self, dictionary, external_media_path, emitter=None, thread_obj=None):
         self.dictionary = dictionary
         self.external_media_path = external_media_path
         self.emitter = emitter
+        self.thread_obj = thread_obj
         self.note_model = genanki.Model(
             1091735104,
             'Import only model',
@@ -42,7 +43,7 @@ class NoteMaker:
             }])
 
     def printOrLog(self,text=""):
-        if self.emitter != None:
+        if self.emitter != None and self.thread_obj != None and self.thread_obj.interrupt_and_quit == False:
             self.emitter.emit(text)
         else:
             print(text)
@@ -109,6 +110,8 @@ class NoteMaker:
         i = 0
         media_paths = []
         for simp in rawNoteDict:
+            if self.thread_obj != None and self.thread_obj.interrupt_and_quit == True:
+                break
             i+=1
             if i%25 == 0:
                 self.printOrLog(f"{i} words enriched")
@@ -116,6 +119,8 @@ class NoteMaker:
             media_paths.append(media_path)
             deck.add_note(genanki.Note( self.note_model, note, tags=[tag]))
 
+        if self.thread_obj != None and self.thread_obj.interrupt_and_quit == True:
+            return
         self.printOrLog("Note maker is making a package")
         apkg = genanki.Package(deck)
         if include_sound == True:

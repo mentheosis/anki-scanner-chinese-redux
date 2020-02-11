@@ -40,6 +40,10 @@
         "file_to_scan":{
             "doc": "The path to the text that is to be scanned. This can also be a director path if you change the file_or_dir config to dir",
             "val": "./media_files/demo.txt"
+        },
+        "input_encoding":{
+            "doc": "encoding of the input file",
+            "val": "utf-8"
         }
     },
     "fields": {

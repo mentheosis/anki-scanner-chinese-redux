@@ -27,21 +27,26 @@ def orchestrateTextScanner(
     file_to_scan,
     tag_for_new_cards,
     output_path,
-    emitter):
+    input_encoding,
+    emitter,
+    threadObj):
 
     # worker thread needs its own dictionry, so cant use singleton here
     dictionary = Dictionary()
     joined_db_path = join(dirname(realpath(__file__)),anki_db_path)
-    sc = TextScanner(dictionary, joined_db_path, anki_db_field_indices, anki_tags_to_exclude, emitter)
-    nm = NoteMaker(dictionary, media_dir_path, emitter)
+    sc = TextScanner(dictionary, joined_db_path, anki_db_field_indices, anki_tags_to_exclude, emitter, threadObj)
+    nm = NoteMaker(dictionary, media_dir_path, emitter, threadObj)
 
-    new_char_words, new_words, new_chars = sc.scan_and_print(file_to_scan, file_or_dir)
+    new_char_words, new_words, new_chars = sc.scan_and_print(file_to_scan, file_or_dir, input_encoding)
     emitter.emit(f"\nPreparing to make {len(new_char_words)} new notes")
     if include_sound == 'true' or include_sound == 'True':
         include_sound = True
     nm.make_notes(new_char_words, tag_for_new_cards, output_path, tag_for_new_cards, include_sound)
     dictionary.conn.close()
-    emitter.emit("\nThanks for using the scanner! You can now import your apkg file to anki.")
+    if threadObj.interrupt_and_quit == False:
+        emitter.emit("\nThanks for using the scanner! You can now import your apkg file to anki.")
+    else:
+        emitter.emit("\nExiting early, no package made, thanks for using the scanner!")
     return "done"
 
 
@@ -57,7 +62,8 @@ class TextScannerThreadAsync(QtCore.QThread):
     file_or_dir,
     file_to_scan,
     tag_for_new_cards,
-    output_path):
+    output_path,
+    input_encoding):
         super().__init__()
         self.anki_db_path = anki_db_path
         self.anki_db_field_indices = anki_db_field_indices
@@ -68,6 +74,8 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.file_to_scan = file_to_scan
         self.tag_for_new_cards = tag_for_new_cards
         self.output_path = output_path
+        self.input_encoding = input_encoding
+        self.interrupt_and_quit = False
 
     def run(self):
         orchestrateTextScanner(self.anki_db_path,
@@ -79,14 +87,17 @@ class TextScannerThreadAsync(QtCore.QThread):
             self.file_to_scan,
             self.tag_for_new_cards,
             self.output_path,
-            self.sig)
+            self.input_encoding,
+            self.sig,
+            self)
 
 def gatherControls(config):
     config_inputs = {
-        'anki_db_path':'Path to the anki2 db file, or to any anki2 file such as from an unzipped .apkg file',
+        'anki_db_path':'',
         'anki_db_field_indices':'',
         'media_dir_path':'',
-        'file_or_dir':''
+        'file_or_dir':'',
+        'input_encoding':''
     }
 
     ui_inputs = {
@@ -124,14 +135,17 @@ def gatherControls(config):
 
     return controls, hidden_cfg
 
-def showTextScanner():
-    dialog = QDialog(mw)
-    dialog.resize(900,800)
-    dialog.setWindowTitle('Chinese Text Scanner')
-    layout = QVBoxLayout()
 
-    #buttonBox = QDialogButtonBox(QDialogButtonBox.Ok)
-    #buttonBox.accepted.connect(dialog.accept)
+class ScanDialog(QDialog):
+    def __init__(self, onCloseFn, parent=None):
+        super(ScanDialog, self).__init__(parent)
+        self.onCloseFn = onCloseFn
+
+    def closeEvent(self, evnt):
+        self.onCloseFn()
+
+def showTextScanner():
+    layout = QVBoxLayout()
 
     topLabel = QLabel()
     topLabel.setWordWrap(True)
@@ -148,6 +162,8 @@ def showTextScanner():
     spacer = QLabel()
     spacer.setText('')
     transmitBtn = QPushButton('Run the scan!')
+    cancelBtn = QPushButton('Stop the scanner!')
+    cancelBtn.setEnabled(False)
     outputText = QTextBrowser()
 
     layout.addWidget(topLabel)
@@ -158,15 +174,22 @@ def showTextScanner():
     layout.addWidget(spacer)
     layout.addWidget(transmitBtn)
     layout.addWidget(outputText)
+    layout.addWidget(cancelBtn)
     #layout.addWidget(buttonBox)
 
+    mw.exiting = False
+
     def updateTextOutput(text):
-        outputText.append(text)
+        if mw.exiting == False:
+            outputText.append(text)
 
     def resetButton():
-        transmitBtn.setEnabled(True)
+        if mw.exiting == False:
+            transmitBtn.setEnabled(True)
+            cancelBtn.setEnabled(False)
 
     def runScanner():
+        cancelBtn.setEnabled(True)
         ui_inputs = {}
         for control in controls:
             ui_inputs[control['key']] = control['input'].text()
@@ -184,12 +207,29 @@ def showTextScanner():
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'])
+            ui_inputs['output_path'],
+            hidden_cfg['input_encoding'])
         mw.worker.sig.connect(updateTextOutput)
         mw.worker.finished.connect(resetButton)
         mw.worker.start()
 
-    transmitBtn.clicked.connect(runScanner)
+    def onCancel():
+        resetButton()
+        if hasattr(mw,'worker'):
+            mw.worker.interrupt_and_quit = True
+            mw.worker.sig.emit("told worker to quit..")
 
+    def onDialogClose():
+        mw.exiting = True
+        onCancel()
+
+    transmitBtn.clicked.connect(runScanner)
+    cancelBtn.clicked.connect(onCancel)
+
+    dialog = ScanDialog(onDialogClose, mw)
+    dialog.resize(900,800)
+    dialog.setWindowTitle('Chinese Text Scanner')
+    #buttonBox = QDialogButtonBox(QDialogButtonBox.Ok)
+    #buttonBox.accepted.connect(dialog.accept)
     dialog.setLayout(layout)
     dialog.exec_()

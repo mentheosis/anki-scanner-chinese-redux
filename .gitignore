@@ -11,6 +11,7 @@ chinese/config_saved.json
 text-files/
 *.apkg
 *.zip
+*.mp3
 packaged-libs
 chinese/lib
 chinese/orig_lib

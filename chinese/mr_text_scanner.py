@@ -25,15 +25,16 @@ class ChineseNote:
 
 
 class TextScanner:
-    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], emitter=None):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], emitter=None, thread_obj=None):
         self.dictionary = dictionary
         self.anki_db_file_path = anki_db_file_path
         self.anki_note_indices = anki_note_indices
         self.tags_to_exclude = tags_to_exclude
         self.emitter = emitter
+        self.thread_obj = thread_obj
 
     def printOrLog(self,text=""):
-        if self.emitter != None:
+        if self.emitter != None and self.thread_obj != None and self.thread_obj.interrupt_and_quit == False:
             self.emitter.emit(text)
         else:
             print(text)
@@ -45,6 +46,8 @@ class TextScanner:
         jieba_words = {}
         i = 1
         for text in sentences:
+            if self.thread_obj != None and self.thread_obj.interrupt_and_quit == True:
+                break
             #cut_all=False means "accurate mode" https://github.com/fxsjy/jieba
             seg_list = jieba.cut(text, cut_all=False)
             for word in seg_list:
@@ -59,7 +62,7 @@ class TextScanner:
         return jieba_words
 
     #param rel_path: relative path to unzipped epub director containing a bunch of xhtml
-    def parse_unzipped_epub_to_dict(self, rel_path):
+    def parse_unzipped_epub_to_dict(self, rel_path, encoding="utf-8"):
         #https://stackoverflow.com/questions/10377998/how-can-i-iterate-over-files-in-a-given-directory
         #directory_in_str = "./epubfile/"
         directory = os.fsencode(rel_path)
@@ -68,19 +71,22 @@ class TextScanner:
         for file in os.listdir(directory):
              filename = os.fsdecode(file)
              if filename.endswith(".xhtml") or filename.endswith(".txt"):
-                with open(rel_path+filename, 'r') as file:
-                    data = re.split("[。，！？]",file.read().replace('\n', '').strip())
-                    booktext.append(data)
+                try:
+                    with open(rel_path+filename, 'r', encoding=encoding) as file:
+                        data = re.split("[。，！？]",file.read().replace('\n', '').strip())
+                        booktext.append(data)
+                except:
+                    self.printOrLog(f"Could not open the file {path}, make sure it exists.")
              else:
                  continue
         return self.parse_sentences_with_jieba(booktext)
 
 
-    def parse_single_file_to_dict(self, rel_path):
+    def parse_single_file_to_dict(self, rel_path, encoding="utf-8"):
         #https://stackoverflow.com/questions/3114786/python-library-to-extract-epub-information/3114929
         path = join(dirname(realpath(__file__)),rel_path)
         try:
-            with open(path, 'r') as file:
+            with open(path, 'r', encoding=encoding) as file:
                 booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
         except:
             self.printOrLog(f"Could not open the file {path}, make sure it exists.")
@@ -206,9 +212,9 @@ class TextScanner:
         #self.printOrLog(f"\nrandom new {noun}:",str(list(new.values())[36]))
         #self.printOrLog("\noverlap words:", overlap.keys())
 
-    def scan_and_compare(self, text_path, file_or_dir="file"):
+    def scan_and_compare(self, text_path, file_or_dir="file", encoding="utf-8"):
         anki_words = self.load_words_from_anki_notes()
-        scanned_words = self.parse_unzipped_epub_to_dict(text_path) if file_or_dir == "dir" else self.parse_single_file_to_dict(text_path)
+        scanned_words = self.parse_unzipped_epub_to_dict(text_path, encoding) if file_or_dir == "dir" else self.parse_single_file_to_dict(text_path, encoding)
         left_diff, intersect = self.get_leftdiff_and_intersect(scanned_words, anki_words)
 
         anki_chars = self.parse_chars_from_dict(anki_words)
@@ -217,7 +223,7 @@ class TextScanner:
 
         return scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect
 
-    def scan_and_print(self, text_path, file_or_dir="file"):
+    def scan_and_print(self, text_path, file_or_dir="file", encoding="utf-8"):
         scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect = self.scan_and_compare(
             text_path,
             file_or_dir
