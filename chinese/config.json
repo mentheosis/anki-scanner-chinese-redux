@@ -44,6 +44,10 @@
         "input_encoding":{
             "doc": "encoding of the input file",
             "val": "utf-8"
+        },
+        "scan_mode":{
+            "doc": "One of 'new_chars', 'new_words', or 'new_char_words' - determines which set will be made into new anki notes.",
+            "val": "new_char_words"
         }
     },
     "fields": {

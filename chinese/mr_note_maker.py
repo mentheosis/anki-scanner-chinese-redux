@@ -11,7 +11,7 @@ class NoteMaker:
         self.emitter = emitter
         self.thread_obj = thread_obj
         self.note_model = genanki.Model(
-            1091735104,
+            1091337104,
             'Import only model',
             fields=[
                 {'name':'Hanzi'},
@@ -33,14 +33,11 @@ class NoteMaker:
             ],
             templates=[{
               'name': 'Import only card',
-              'qfmt': '{{Hanzi}}',
-              'afmt': '{{FrontSide}}<hr id="answer">{{Meaning}}<br>{{Sound}}',
-              'css':'''.tone1 {color: red;}
-                        .tone2 {color: orange;}
-                        .tone3 {color: #1510f0;}
-                        .tone4 {color: #42a7f9;}
-                        .tone5 {color: gray;}'''
-            }])
+              'qfmt': '<div class=hanzi>{{Hanzi}}</div><br><br><div class=sentence>{{Sentence}}</div>',
+              'afmt': '<div class=hanzi>{{Color}}</div><br><div class=pinyin>{{Pinyin}}</div><br>{{Meaning}}<br><br><div class=sentence>{{Sentence}}</div><br><div class=sentence>{{SentencePinyin}}</div>',
+            }],
+            css = '.card {font-family: arial; font-size: 22px; text-align: left;  background-color: #fdf6e3;} .hanzi {font-family: Kaiti;  font-size: 50px; line-height: 0.8em, margin-top:0.2em; font-weight:normal;} .tone1 {color: red;} .tone2 {color: orange;} .tone3 {color: #1510f0;} .tone4 {color: #42a7f9;} .tone5 {color: gray;}'
+)
 
     def printOrLog(self,text=""):
         if self.emitter != None and self.thread_obj != None and self.thread_obj.interrupt_and_quit == False:
@@ -76,7 +73,7 @@ class NoteMaker:
         trad = rawNote.traditional
         definition = self.try_find_definition_by_char(rawNote.word)
         pinyin = self.dictionary.get_pinyin(simp,'simp')
-        color_pinyin = find_colors(pinyin,{"pinyin":pinyin})
+        color_pinyin = find_colors(simp,{"pinyin":pinyin},pinyinMode=True,dictionary=self.dictionary)
 
         sentence_pinyin = self.dictionary.get_pinyin(rawNote.sentence,'simp')
         sentence_color_pinyin = find_colors(sentence_pinyin,{"pinyin":sentence_pinyin})

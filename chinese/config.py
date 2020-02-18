@@ -22,42 +22,61 @@ from json import dump, load
 from os.path import dirname, exists, join, realpath
 
 class ConfigManager:
-    default_path = join(dirname(realpath(__file__)), 'config.json')
-    saved_path = join(dirname(realpath(__file__)), 'config_saved.json')
 
-    def update_default_configs(self, default, saved):
-        for key in default["textScanner"]:
-            if saved["textScanner"].get(key) == None:
-                saved["textScanner"][key] = default["textScanner"][key]
+    def __init__(self, externalMode=False):
+        self.default_path = join(dirname(realpath(__file__)), 'config.json')
+        self.saved_path = join(dirname(realpath(__file__)), 'config_saved.json')
+        self.externalMode = externalMode
+        if self.externalMode == False:
+            from aqt import mw
+            self.mw = mw
+        with open(self.default_path, encoding='utf-8') as f:
+            self.default_config = defaultdict(str, load(f))
 
-    with open(default_path, encoding='utf-8') as f:
-        config = defaultdict(str, load(f))
+    def ensure_defaults(self,target,defaults):
+        for key in defaults["textScanner"]:
+            if target["textScanner"].get(key) == None:
+                target["textScanner"][key] = defaults["textScanner"][key]
 
-    if exists(saved_path):
-        with open(saved_path, encoding='utf-8') as f:
-            config_saved = defaultdict(str, load(f))
-            for key in config["textScanner"]:
-                if config_saved["textScanner"].get(key) == None:
-                    config_saved["textScanner"][key] = config["textScanner"][key]
-        if config_saved['version'] == config['version']:
-            config = config_saved
+    def refresh_config(self):
+        if self.externalMode == False:
+            self.config = self.mw.addonManager.getConfig(__name__)
+            self.ensure_defaults(self.config, self.default_config)
+        else:
+            self.config = self.default_config
+            if exists(saved_path):
+                with open(saved_path, encoding='utf-8') as f:
+                    config_saved = defaultdict(str, load(f))
+                self.ensure_defaults(config_saved, self.default_config)
+                self.config = config_saved
+
+    def toString(self, printKey='textScanner'):
+        str=""
+        for item in self.config[printKey]:
+            str = str+f"\n\n{item}: {self.config[printKey][item]['val']}"
+        return str
 
     def __setitem__(self, key, value):
         self.config[key] = value
+        self.mw.addonManager.writeConfig(__name__, self.config)
 
     def __getitem__(self, key):
+        self.refresh_config()
         return self.config[key]
 
     def update(self, d):
         self.config.update(d)
+        self.mw.addonManager.writeConfig(__name__, self.config)
 
     def save(self):
-        from aqt import mw
-        with open(self.saved_path, 'w', encoding='utf-8') as f:
-            dump(self.config, f)
-        mw.addonManager.writeConfig(__name__, self.config)
+        if self.externalMode == False:
+            self.mw.addonManager.writeConfig(__name__, self.config)
+        else:
+            with open(self.saved_path, 'w', encoding='utf-8') as f:
+                dump(self.config, f)
 
     def get_fields(self, groups=None):
+        self.refresh_config()
         if not groups:
             groups = list(self.config['fields'])
         fields = []

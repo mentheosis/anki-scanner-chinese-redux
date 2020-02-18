@@ -155,7 +155,7 @@ def reformat_transcript(note, group, target):
     set_all(config['fields'][group], note, to=hidden)
 
 
-def find_colors(hanzi,note):
+def find_colors(hanzi,note,pinyinMode=False,dictionary=None):
     if config['target'] in ['pinyin', 'pinyin_tw', 'bopomofo']:
         target = 'pinyin'
         field_group = 'pinyin'
@@ -169,6 +169,14 @@ def find_colors(hanzi,note):
     trans = sanitize_transcript(field, target, grouped=False)
     trans = split_transcript(' '.join(trans), target, grouped=False)
     hanzi = split_hanzi(cleanup(hanzi), grouped=False)
+
+    # without this it was failing to get colorized pinyin for individual chars
+    if pinyinMode == True and dictionary != None:
+        split_pinyin=[]
+        for char in hanzi:
+            split_pinyin.append(dictionary.get_pinyin(char,'simp'))
+        hanzi = split_pinyin
+
     colorized = colorize_fuse(hanzi, trans)
     return colorized
 

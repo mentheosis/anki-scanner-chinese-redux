@@ -45,11 +45,13 @@ PHONETIC_TARGETS = {
     'Jyutping': 'jyutping',
 }
 
+menu_text = 'TextScan扫描'
 
 def load_menu():
-    add_menu('TextScan扫描')
-    add_menu_item('TextScan扫描', _('Scan text'), showTextScanner)
-    add_menu_item('TextScan扫描', _('About this addon'), showAbout)
+    add_menu(menu_text)
+    add_menu_item(menu_text, _('Scan file'), lambda:showTextScanner("file"))
+    add_menu_item(menu_text, _('Scan pasted text'), lambda:showTextScanner("clipboard"))
+    add_menu_item(menu_text, _('About this addon'), showAbout)
 
     '''
     for k, v in SPEECH_ENGINES.items():
