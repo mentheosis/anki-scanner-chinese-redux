@@ -152,7 +152,7 @@ def gatherControls(config, ui_mode="file"):
         label.setWordWrap(True)
         label.setText(ui_inputs[ipt])
         tryConfig = config['textScanner'].get(ipt)
-        default = tryConfig['val'] if tryConfig != None else "Uninitialized"
+        default = str(tryConfig['val']) if tryConfig != None else "Uninitialized"
         if ipt == 'scan_mode':
             b1 = QRadioButton(new_char_words)
             b1.mode = 'new_char_words'
