@@ -5,7 +5,7 @@ from aqt import mw
 from aqt.utils import askUser, showInfo
 from anki.find import Finder
 
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
 from os.path import dirname, join, realpath
@@ -15,6 +15,9 @@ from .database import Dictionary
 from .mr_text_scanner import TextScanner
 from .mr_note_maker import NoteMaker
 
+dev_mode = False
+if config['textScanner']['dev_mode']['val'] == True:
+    dev_mode = True
 
 class TextScannerThreadAsync(QtCore.QThread):
     sig = QtCore.pyqtSignal(str)
@@ -24,6 +27,10 @@ class TextScannerThreadAsync(QtCore.QThread):
         # internal default params
         self.interrupt_and_quit = False
         self.run_mode = "scan"
+
+    def refresh_query(self, anki_db_path, query):
+        self.anki_db_path = anki_db_path
+        self.query = query
 
     def refresh_inputs(self,
     anki_db_path,
@@ -101,6 +108,14 @@ class TextScannerThreadAsync(QtCore.QThread):
                 self.sig.emit("\nExiting early, no package made, thanks for using the scanner!")
             dictionary.conn.close()
 
+        elif self.run_mode == 'query_db':
+            # worker thread needs its own dictionry, so cant use singleton here
+            dictionary = Dictionary()
+            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
+            sc = TextScanner(dictionary, joined_db_path, [], [], self.sig, self)
+            sc.query_db(self.query)
+            dictionary.conn.close()
+
         else:
             self.sig.emit(f"Worker thread has nothing to do for mode {self.run_mode}...")
 
@@ -119,8 +134,8 @@ def gatherControls(config, ui_mode="file"):
                 a whole collection of files at once by changing the file_or_dir
                 property in the config to dir, and then putting the dir path here.</span>''',
         'scan_mode':'''<br><span><b>Mode:</b><br>Choose whether to produce a card for every new words, every new inidividual character, or only new words using new characters</span>''',
-        'output_path':'''<br><span><b>Output path:</b><br>Where the resulting .apk file should be placed
-                (including the filename.apk)</span>''',
+        'output_path':'''<br><span><b>Output path:</b><br>Where the resulting .apkg file should be placed
+                (including the filename.apkg)</span>''',
         'tag_for_new_cards':'''<br><span><b>Imported deck/tag name:</b><br>This string cannot contain
                 spaces. It will be applied to all new notes as a tag,
                 and will also be the name of the deck imported.</span>''',
@@ -147,45 +162,78 @@ def gatherControls(config, ui_mode="file"):
         input['mode'] = b.mode
 
     controls = []
-    for ipt in ui_inputs:
+    if ui_mode == 'dev':
         label = QLabel()
         label.setWordWrap(True)
-        label.setText(ui_inputs[ipt])
-        tryConfig = config['textScanner'].get(ipt)
-        default = str(tryConfig['val']) if tryConfig != None else "Uninitialized"
-        if ipt == 'scan_mode':
-            b1 = QRadioButton(new_char_words)
-            b1.mode = 'new_char_words'
-            b2 = QRadioButton(new_chars)
-            b2.mode = 'new_chars'
-            b3 = QRadioButton(new_words)
-            b3.mode = 'new_words'
+        label_text = '''<br><span><b>Query anki db:</b><br>You can run a sqlite query to probe the anki notes db</span>'''
+        label.setText(label_text)
+        query_input = QPlainTextEdit()
+        controls.append({"key":"query_db", "label":label, "input":query_input})
+    else:
+        for ipt in ui_inputs:
+            label = QLabel()
+            label.setWordWrap(True)
+            label.setText(ui_inputs[ipt])
+            tryConfig = config['textScanner'].get(ipt)
+            default = str(tryConfig['val']) if tryConfig != None else "Uninitialized"
+            if ipt == 'scan_mode':
+                b1 = QRadioButton(new_char_words)
+                b1.mode = 'new_char_words'
+                b2 = QRadioButton(new_chars)
+                b2.mode = 'new_chars'
+                b3 = QRadioButton(new_words)
+                b3.mode = 'new_words'
 
-            if default == 'new_char_words':
-                b1.setChecked(True)
-            if default == 'new_chars':
-                b2.setChecked(True)
-            if default == 'new_words':
-                b3.setChecked(True)
+                if default == 'new_char_words':
+                    b1.setChecked(True)
+                if default == 'new_chars':
+                    b2.setChecked(True)
+                if default == 'new_words':
+                    b3.setChecked(True)
 
-            radioLayout = QHBoxLayout()
-            radioLayout.addWidget(b1)
-            radioLayout.addWidget(b2)
-            radioLayout.addWidget(b3)
+                radioLayout = QHBoxLayout()
+                btnGrp = QButtonGroup()
+                btnGrp.addButton(b1)
+                btnGrp.addButton(b2)
+                btnGrp.addButton(b3)
+                radioLayout.addWidget(b1)
+                radioLayout.addWidget(b2)
+                radioLayout.addWidget(b3)
 
-            scan_input = {"mode":default,"layout":radioLayout}
-            b1.toggled.connect(lambda:interpretRadioBtn(b1, scan_input))
-            b2.toggled.connect(lambda:interpretRadioBtn(b2, scan_input))
-            b3.toggled.connect(lambda:interpretRadioBtn(b3, scan_input))
-            controls.append({"key":ipt, "label":label, "input":scan_input})
-        elif ipt == 'file_to_scan' and ui_mode == 'clipboard':
-            clipboard_input = QPlainTextEdit()
-            label.setText("<span><b>Input text:</b></span>")
-            controls.append({"key":ipt, "label":label, "input":clipboard_input})
-        else:
-            input = QLineEdit()
-            input.setText(default)
-            controls.append({"key":ipt, "label":label, "input":input})
+                scan_input = {"mode":default,"layout":radioLayout, "btnGrp":btnGrp}
+                b1.toggled.connect(lambda:interpretRadioBtn(b1, scan_input))
+                b2.toggled.connect(lambda:interpretRadioBtn(b2, scan_input))
+                b3.toggled.connect(lambda:interpretRadioBtn(b3, scan_input))
+                controls.append({"key":ipt, "label":label, "input":scan_input})
+            elif ipt == 'file_to_scan' and ui_mode == 'clipboard':
+                clipboard_input = QPlainTextEdit()
+                label.setText("<span><b>Input text:</b></span>")
+                controls.append({"key":ipt, "label":label, "input":clipboard_input})
+            elif ipt == 'include_sound':
+                sb1 = QRadioButton("True")
+                sb1.mode = 'true'
+                sb2 = QRadioButton("False")
+                sb2.mode = 'false'
+
+                if default == 'true':
+                    sb1.setChecked(True)
+                else:
+                    sb2.setChecked(True)
+                soundLayout = QHBoxLayout()
+                btnGrp = QButtonGroup()
+                btnGrp.addButton(sb1)
+                btnGrp.addButton(sb2)
+                soundLayout.addWidget(sb1)
+                soundLayout.addWidget(sb2)
+
+                sound_input = {"mode":default,"layout":soundLayout, "btnGrp":btnGrp}
+                sb1.toggled.connect(lambda:interpretRadioBtn(sb1, sound_input))
+                sb2.toggled.connect(lambda:interpretRadioBtn(sb2, sound_input))
+                controls.append({"key":ipt, "label":label, "input":sound_input})
+            else:
+                input = QLineEdit()
+                input.setText(default)
+                controls.append({"key":ipt, "label":label, "input":input})
 
     return controls, hidden_cfg
 
@@ -239,6 +287,8 @@ def showTextScanner(ui_mode="file"):
         leftLayout.addWidget(control['label'])
         if control['key'] == 'scan_mode':
             leftLayout.addLayout(control['input']['layout'])
+        elif control['key'] == 'include_sound':
+            leftLayout.addLayout(control['input']['layout'])
         elif control['key'] == 'file_to_scan' and ui_mode == 'file':
             fb = QPushButton("Browse files")
             fb.clicked.connect(make_getFile(control['input']))
@@ -257,27 +307,31 @@ def showTextScanner(ui_mode="file"):
             leftLayout.addWidget(control['input'])
         leftLayout.addStretch()
 
-    scanBtn = QPushButton('Run the scan!')
-    cancelBtn = QPushButton('Stop everything!')
-    cancelBtn.setEnabled(False)
-    printBtn = QPushButton('Display all found')
-    printBtn.setEnabled(False)
-    noteBtn = QPushButton('Create anki notes')
-    noteBtn.setEnabled(False)
-
     scanButtonLayout = QHBoxLayout()
-    scanButtonLayout.addWidget(scanBtn)
-    scanButtonLayout.addWidget(cancelBtn)
-    scanButtonLayout.addWidget(printBtn)
-    scanButtonLayout.addWidget(noteBtn)
+
+    if ui_mode == "dev":
+        queryBtn = QPushButton('Run sqlite query')
+        scanButtonLayout.addWidget(queryBtn)
+    else:
+        scanBtn = QPushButton('Run the scan!')
+        cancelBtn = QPushButton('Stop everything!')
+        cancelBtn.setEnabled(False)
+        printBtn = QPushButton('Display all found')
+        printBtn.setEnabled(False)
+        noteBtn = QPushButton('Create anki notes')
+        noteBtn.setEnabled(False)
+
+        scanButtonLayout.addWidget(scanBtn)
+        scanButtonLayout.addWidget(cancelBtn)
+        scanButtonLayout.addWidget(printBtn)
+        scanButtonLayout.addWidget(noteBtn)
+
     rightLayout.addLayout(scanButtonLayout)
     rightLayout.addWidget(outputText)
-
     colLayout.addLayout(leftLayout)
     colLayout.addLayout(rightLayout)
     outerLayout.addLayout(colLayout)
     #layout.addWidget(buttonBox)
-
 
     mw.exiting = False
     def updateTextOutput(text):
@@ -285,7 +339,7 @@ def showTextScanner(ui_mode="file"):
             outputText.append(text)
 
     def resetButton():
-        if mw.exiting == False:
+        if mw.exiting == False and ui_mode != 'dev':
             scanBtn.setEnabled(True)
             cancelBtn.setEnabled(False)
             if hasattr(mw.worker,'new_chars'):
@@ -298,21 +352,40 @@ def showTextScanner(ui_mode="file"):
             if control['key'] == "scan_mode":
                 ui_inputs[control['key']] = control['input']["mode"]
                 config.config['textScanner'][control['key']]['val'] = control['input']['mode']
+            elif control['key'] == "include_sound":
+                ui_inputs[control['key']] = control['input']["mode"]
+                config.config['textScanner'][control['key']]['val'] = control['input']['mode']
             elif control['key'] == 'file_to_scan' and ui_mode == 'clipboard':
                 # dont save user input as config in this case
                 ui_inputs[control['key']] = control['input'].toPlainText()
+            elif control['key'] == 'anki_tags_to_exclude':
+                ui_inputs['anki_tags_to_exclude'] = control['input'].text().replace(" ","")
+                config.config['textScanner'][control['key']]['val'] = control['input'].text()
+            elif control['key'] == 'query_db':
+                ui_inputs[control['key']] = control['input'].toPlainText()
+                if config.config['textScanner'].get(control['key']) == None:
+                    config.config['textScanner'][control['key']] = {"val":''}
+                config.config['textScanner'][control['key']]['val'] = control['input'].toPlainText()
             else:
                 ui_inputs[control['key']] = control['input'].text()
                 config.config['textScanner'][control['key']]['val'] = control['input'].text()
         # save user choices as their config for next time.
         config.save()
-        ui_inputs['anki_tags_to_exclude'] = ui_inputs['anki_tags_to_exclude'].replace(" ","")
         return ui_inputs
 
     mw.worker = TextScannerThreadAsync()
     mw.worker.sig.connect(updateTextOutput)
     mw.worker.finished.connect(resetButton)
 
+    # dev mode sqlite query
+    def runQuery():
+        outputText.setText("")
+        ui_inputs = gather_ui_inputs()
+        mw.worker.refresh_query(hidden_cfg['anki_db_path'],ui_inputs['query_db'])
+        mw.worker.setMode('query_db')
+        mw.worker.start()
+
+    # the main file or text scan
     def runScanner():
         outputText.setText("Starting scan...")
         cancelBtn.setEnabled(True)
@@ -399,14 +472,17 @@ def showTextScanner(ui_mode="file"):
         mw.exiting = True
         onCancel()
 
-    scanBtn.clicked.connect(runScanner)
-    printBtn.clicked.connect(printWords)
-    noteBtn.clicked.connect(makeNotes)
-    cancelBtn.clicked.connect(onCancel)
+    if ui_mode == "dev":
+        queryBtn.setStyleSheet("background-color: #8DE1DD")
+        queryBtn.clicked.connect(runQuery)
+    else:
+        scanBtn.clicked.connect(runScanner)
+        printBtn.clicked.connect(printWords)
+        noteBtn.clicked.connect(makeNotes)
+        cancelBtn.clicked.connect(onCancel)
 
     dialog = ScanDialog(onDialogClose, mw)
     dialog.resize(900,800)
-    scanBtn.setStyleSheet("background-color: #8DE1DD")
     #dialog.setStyleSheet("background-color: #CCCCCC")
     dialog.setWindowTitle('Chinese Text Scanner')
     dialog.setLayout(outerLayout)

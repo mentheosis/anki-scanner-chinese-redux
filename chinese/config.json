@@ -48,6 +48,10 @@
         "scan_mode":{
             "doc": "One of 'new_chars', 'new_words', or 'new_char_words' - determines which set will be made into new anki notes.",
             "val": "new_char_words"
+        },
+        "dev_mode":{
+          "doc": "Change the add-on into dev mode with some extra controls and a different menu label. Restart Anki after changing this value to see the new mode.",
+          "val": false
         }
     },
     "fields": {

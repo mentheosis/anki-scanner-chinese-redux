@@ -25,6 +25,7 @@ class ChineseNote:
          str=str+f"Sentence: {self.sentence}\n"
          return str
 
+sentence_delimiters = "[。，！？><]"
 
 class TextScanner:
     def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], emitter=None, thread_obj=None):
@@ -82,7 +83,7 @@ class TextScanner:
              if filename.endswith(".xhtml") or filename.endswith(".txt"):
                 try:
                     with open(rel_path+filename, 'r', encoding=encoding) as file:
-                        data = re.split("[。，！？]",file.read().replace('\n', '').strip())
+                        data = re.split(sentence_delimiters,file.read().replace('\n', '').strip())
                         booktext.append(data)
                 except:
                     self.printOrLog(f"Could not open the file {path}, make sure it exists.")
@@ -96,14 +97,14 @@ class TextScanner:
         path = join(dirname(realpath(__file__)),rel_path)
         try:
             with open(path, 'r', encoding=encoding) as file:
-                booktext = re.split("[。，！？]",file.read().replace('\n', '').strip())
+                booktext = re.split(sentence_delimiters,file.read().replace('\n', '').strip())
         except:
             self.printOrLog(f"Could not open the file {path}, make sure it exists.")
             return {}
         return self.parse_sentences_with_jieba(booktext)
 
     def parse_rawtext_to_dict(self, raw_text, encoding="utf-8"):
-        sentences = re.split("[。，！？]",raw_text.replace('\n', '').strip())
+        sentences = re.split(sentence_delimiters,raw_text.replace('\n', '').strip())
         return self.parse_sentences_with_jieba(sentences)
 
     '''
@@ -117,12 +118,12 @@ class TextScanner:
     );
     '''
     ## just a debugging method to explore anki file
-    def query_db(self, query = 1):
+    def query_db(self, query = 'master'):
         db_path = self.anki_db_file_path
         conn = connect(db_path)
         c = conn.cursor()
 
-        if query == 1:
+        if query == 'master':
             #query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
             #query = 'select type tbl_name from SQLITE_MASTER'
             #query = 'select * from notes'
@@ -133,12 +134,12 @@ class TextScanner:
         already_have_words = {}
         for row in c:
             if query == 'select * from sqlite_master':
-                self.printOrLog(f"row, {row[0]}, {row[1]}, {row[2]}, {row[3]}")
+                self.printOrLog(f"\n\nrow\n {row[0]}, {row[1]}, {row[2]}, {row[3]}")
                 sub_row = row[4].split("\n")
                 for sub in sub_row:
-                    self.printOrLog(f"subrow: {sub}")
+                    self.printOrLog(sub)
             else:
-                self.printOrLog("row",row)
+                self.printOrLog(f"\n\nrow\n {row}")
 
     '''
     file_path: path to an anki2 file, which is a sqllite file that

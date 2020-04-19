@@ -27,7 +27,7 @@ from aqt.utils import openLink
 from .about import CSR_GITHUB_URL, showAbout
 
 from .mr_scanner_ui import showTextScanner
-from .main import config
+from .singletons import config
 
 
 SPEECH_ENGINES = {
@@ -45,12 +45,18 @@ PHONETIC_TARGETS = {
     'Jyutping': 'jyutping',
 }
 
+dev_mode = False
 menu_text = 'TextScan扫描'
+if config['textScanner']['dev_mode']['val'] == True:
+    dev_mode = True
+    menu_text = 'TextScan扫描 dev'
 
 def load_menu():
     add_menu(menu_text)
     add_menu_item(menu_text, _('Scan file'), lambda:showTextScanner("file"))
     add_menu_item(menu_text, _('Scan pasted text'), lambda:showTextScanner("clipboard"))
+    if dev_mode == True:
+        add_menu_item(menu_text, _('Query anki db'), lambda:showTextScanner("dev"))
     add_menu_item(menu_text, _('About this addon'), showAbout)
 
     '''

@@ -34,9 +34,13 @@ class ConfigManager:
             self.default_config = defaultdict(str, load(f))
 
     def ensure_defaults(self,target,defaults):
+        defaulted = False
         for key in defaults["textScanner"]:
             if target["textScanner"].get(key) == None:
                 target["textScanner"][key] = defaults["textScanner"][key]
+                defaulted = True
+        if defaulted == True:
+            self.mw.addonManager.writeConfig(__name__, self.config)
 
     def refresh_config(self):
         if self.externalMode == False:
