@@ -23,6 +23,9 @@ from aqt import mw
 from .singletons import dictionary, config
 from .gui import load_menu, unload_menu
 
+import jieba
+jieba.setLogLevel(20)
+
 if config['firstRun']:
     dictionary.create_indices()
     config['firstRun'] = False
