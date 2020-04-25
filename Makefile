@@ -20,6 +20,20 @@ PYTEST=pytest
 
 all: test prep pack clean
 
+# pipenv seems to be dead...
+venv/bin/activate: requirements-to-freeze.txt
+	rm -rf virtual_env/
+	python3 -m venv virtual_env
+	. virtual_env/bin/activate ;\
+	pip install -Ur requirements-to-freeze.txt ;\
+	pip freeze | sort > requirements.txt
+	touch virtual_env/bin/activate  # update so it's as new as requirements-to-freeze.txt
+
+lib: venv/bin/activate
+	rm -fr chinese/lib
+	mkdir chinese/lib
+	cp -R virtual_env/lib/python3.7/site-packages/ chinese/lib/
+
 test:
 	"$(PYTEST)" --cov="$(PROJECT_SHORT)" tests -v
 
