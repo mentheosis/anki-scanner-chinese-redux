@@ -5,7 +5,7 @@ from aqt import mw
 from aqt.utils import askUser, showInfo
 from anki.find import Finder
 
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
+from PyQt5.QtWidgets import QMainWindow, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
 from os.path import dirname, join, realpath
@@ -103,7 +103,7 @@ class TextScannerThreadAsync(QtCore.QThread):
             nm.make_notes(new_notes, self.tag_for_new_cards, self.output_path, self.tag_for_new_cards, include_sound)
 
             if self.interrupt_and_quit == False:
-                self.sig.emit("\nThanks for using the scanner! You can now import your apkg file to anki.")
+                self.sig.emit("\nThanks for using the scanner!")
             else:
                 self.sig.emit("\nExiting early, no package made, thanks for using the scanner!")
             dictionary.conn.close()
@@ -140,10 +140,8 @@ def gatherControls(config, ui_mode="file"):
                 spaces. It will be applied to all new notes as a tag,
                 and will also be the name of the deck imported.</span>''',
         'anki_tags_to_exclude':'''<br><span><b>Tags to exclude:</b><br>
-                A comma separated list of tags, these will be excluded from
-                the de-duping process. That means the scanner will still
-                consider a word to be new, even if it contains a character
-                in one of your existing notes tagged with one of these tags</span>''',
+                A comma separated list of tags, the scanner will still
+                consider a word to be new if its in your collection with one of these tags</span>''',
         'include_sound':'''<br><span><b>Include sound files:</b><br>If this is true, the scanner will
                 download sound files of the word readings and include them as media in the generated notes.</span>'''
     }
@@ -238,10 +236,12 @@ def gatherControls(config, ui_mode="file"):
     return controls, hidden_cfg
 
 
-class ScanDialog(QDialog):
-    def __init__(self, onCloseFn, parent=None):
+class ScanDialog(QMainWindow):
+    def __init__(self, contentLayout, onCloseFn, parent=None):
         super(ScanDialog, self).__init__(parent)
         self.onCloseFn = onCloseFn
+        self.setCentralWidget(QWidget(self))
+        self.centralWidget().setLayout(contentLayout)
 
     def closeEvent(self, evnt):
         self.onCloseFn()
@@ -256,13 +256,10 @@ def showTextScanner(ui_mode="file"):
     topLabel = QLabel()
     topLabel.setWordWrap(True)
     topLabel.setText('''<div style="font-weight: bold; font-size:24px; width: 5em; text-align:center;">
-        Welcome to the Chinese Text Scanner!
-        <br> 大家好，这是兔子先生的魔法扫描字器！
-        </div><span>This will scan a text file, find any chinese words that contain
-        new characters not already in the provided anki collection, and then produce
-        an .apkg file which can be imported into anki. The import file will contain
-        notes for all the new words, including tone colors and audio files powered
-        by the chinese-support-redux project. Additional options are available in the config file.</span><br>''')
+        大家好，这是兔子先生的魔法扫描字器！</div>
+        <div>Welcome to the Chinese Text Scanner! This will find any chinese words that are not already in your anki collection.
+        It can then produce an .apkg file which can be imported into anki. Additional options are available in the config file.</div>
+        <br>''')
     #label.setOpenExternalLinks(True)
     outerLayout.addWidget(topLabel)
     #outerLayout.addStretch()
@@ -387,7 +384,7 @@ def showTextScanner(ui_mode="file"):
 
     # the main file or text scan
     def runScanner():
-        outputText.setText("Starting scan...")
+        outputText.setText("Running the scan...")
         cancelBtn.setEnabled(True)
         printBtn.setEnabled(False)
         noteBtn.setEnabled(False)
@@ -477,13 +474,12 @@ def showTextScanner(ui_mode="file"):
         queryBtn.clicked.connect(runQuery)
     else:
         scanBtn.clicked.connect(runScanner)
+        scanBtn.setStyleSheet("background-color: #8DE1DD")
         printBtn.clicked.connect(printWords)
         noteBtn.clicked.connect(makeNotes)
         cancelBtn.clicked.connect(onCancel)
 
-    dialog = ScanDialog(onDialogClose, mw)
-    dialog.resize(900,800)
-    #dialog.setStyleSheet("background-color: #CCCCCC")
+    dialog = ScanDialog(outerLayout, onDialogClose, mw)
+    dialog.resize(900,700)
     dialog.setWindowTitle('Chinese Text Scanner')
-    dialog.setLayout(outerLayout)
-    dialog.exec_()
+    dialog.show()

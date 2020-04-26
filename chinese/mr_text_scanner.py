@@ -45,6 +45,20 @@ class TextScanner:
     ##############################
     ### Input text functions
 
+    def try_find_definition_by_char(self,word):
+        lookup = self.dictionary.get_definitions(word,"en")
+        definition = ""
+        if len(lookup) != 0:
+            definition = lookup[0][1]
+        if len(lookup) == 0 and len(word) > 0:
+            definition = "by char: "
+            for char in word:
+                if char != "一":
+                    char_lookup = self.dictionary.get_definitions(char,"en")
+                    if len(char_lookup) != 0:
+                        definition += "<br><br>"+char+"<br>"+char_lookup[0][1]
+        return definition
+
     def parse_sentences_with_jieba(self, sentences):
         jieba_words = {}
         i = 0
@@ -55,20 +69,26 @@ class TextScanner:
             seg_list = jieba.cut(text, cut_all=False)
             for word in seg_list:
                 i += 1
-                simp = self.dictionary._get_word(word,"simp")
-                if simp != None:
-                    if jieba_words.get(simp) == None:
+                # we can skip trying to futher process things like punctuation, numbers, etc
+                # by checking if the first character is in our dictionary
+                isChineseOrNot = self.dictionary._get_word(word[0],"simp")
+                if isChineseOrNot != None:
+                    simp = self.dictionary._get_word(word,"simp")
+                    if simp != None:
                         trad = self.dictionary._get_word(word,"trad")
+                    else:
+                        # in this case the Jieba dictionary found a word that our dictionary doesn't know
+                        # we'll at least get the pinyin and below get the per-character definition.
+                        simp = word
+                        trad = word
+
+                    if jieba_words.get(simp) == None:
                         pinyin = self.dictionary.get_pinyin(simp,'simp')
-
-                        lookup = self.dictionary.get_definitions(word,"en")
-                        definition = ""
-                        if len(lookup) != 0:
-                            definition = lookup[0][1]
-
+                        definition = self.try_find_definition_by_char(simp)
                         jieba_words[simp] = ChineseNote(word,simp,trad,pinyin,definition,i,text,1)
                     else:
                         jieba_words[simp].incrCount()
+
         return jieba_words
 
     #param rel_path: relative path to unzipped epub director containing a bunch of xhtml

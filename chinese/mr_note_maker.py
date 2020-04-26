@@ -56,7 +56,7 @@ class NoteMaker:
                 if char != "一":
                     char_lookup = self.dictionary.get_definitions(char,"en")
                     if len(char_lookup) != 0:
-                        definition += "<br><br>"+char_lookup[0][1]
+                        definition += "<br><br>"+char+"<br>"+char_lookup[0][1]
         return definition
 
     def find_sound(self, hanzi, speech_type="config"):
@@ -122,5 +122,10 @@ class NoteMaker:
         apkg = genanki.Package(deck)
         if include_sound == True:
             apkg.media_files = media_paths
-        apkg.write_to_file(out_path)
-        self.printOrLog(f"Note maker wrote {len(rawNoteDict)} new notes to to {join(dirname(realpath(__file__)),out_path)}")
+
+        try:
+            apkg.write_to_file(out_path)
+            self.printOrLog(f"Note maker wrote {len(rawNoteDict)} new notes to to {join(dirname(realpath(__file__)),out_path)}")
+            self.printOrLog(f"You can now import your apkg file to anki.")
+        except:
+            self.printOrLog("\n The note maker encountered an error. Please make sure that your output path is in an existing directory (case sensitive)")
