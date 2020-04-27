@@ -4,6 +4,7 @@ from aqt import mw
 from PyQt5.QtWidgets import QMainWindow, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
+import traceback
 from .mr_async_worker_thread import TextScannerThreadAsync
 from .singletons import config
 
@@ -40,8 +41,9 @@ def gatherControls(config, ui_mode="file"):
                 a whole collection of files at once by changing the file_or_dir
                 property in the config to dir, and then putting the dir path here.</span>''',
         'scan_mode':'''<br><span><b>Mode:</b><br>Choose whether to produce a card for every new words, every new inidividual character, or only new words using new characters</span>''',
-        'output_path':'''<br><span><b>Output path:</b><br>Where the resulting .apkg file should be placed
-                (including the filename.apkg)</span>''',
+        # replaced by auto-import
+        #'output_path':'''<br><span><b>Output path:</b><br>Where the resulting .apkg file should be placed
+        #        (including the filename.apkg)</span>''',
         'tag_for_new_cards':'''<br><span><b>Imported deck/tag name:</b><br>This string cannot contain
                 spaces. It will be applied to all new notes as a tag,
                 and will also be the name of the deck imported.</span>''',
@@ -161,7 +163,7 @@ def showTextScanner(ui_mode="file"):
     topLabel.setText('''<div style="font-weight: bold; font-size:24px; width: 5em; text-align:center;">
         大家好，这是兔子先生的魔法扫描字器！</div>
         <div>Welcome to the Chinese Text Scanner! This will find any chinese words that are not already in your anki collection.
-        It can then produce an .apkg file which can be imported into anki. Additional options are available in the config file.</div>
+        It will then automatically import those words as notes into your collecton. Please be sure to configure your note types first, you can find the option in the text scanner menu.</div>
         <br>''')
     #label.setOpenExternalLinks(True)
     outerLayout.addWidget(topLabel)
@@ -272,7 +274,21 @@ def showTextScanner(ui_mode="file"):
         config.save()
         return ui_inputs
 
+    def onAnkiPackageReady(package):
+        try:
+            # creates a menu item in edit menu to undo
+            checkString = f"TextScanner import {mw.mr_worker.importDeckName}"
+            mw.checkpoint(checkString)
+            package.write_to_collection_from_addon()
+            # refreshes main view so new deck is visible
+            mw.reset()
+            updateTextOutput(f"Your new words have successfully been imported to anki!")
+        except:
+            e = traceback.format_exc()
+            updateTextOutput(f"\nError: {e}")
+
     mw.mr_worker.sig.connect(updateTextOutput)
+    mw.mr_worker.NotePackageSig.connect(onAnkiPackageReady)
     mw.mr_worker.finished.connect(resetButton)
 
     # dev mode sqlite query
@@ -302,7 +318,7 @@ def showTextScanner(ui_mode="file"):
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'],
+            #ui_inputs['output_path'],
             hidden_cfg['input_encoding'],
             hidden_cfg['target_note_type'],
             hidden_cfg['note_target_maps'],
@@ -326,7 +342,7 @@ def showTextScanner(ui_mode="file"):
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'],
+            #ui_inputs['output_path'],
             hidden_cfg['input_encoding'],
             hidden_cfg['target_note_type'],
             hidden_cfg['note_target_maps'],
@@ -348,6 +364,8 @@ def showTextScanner(ui_mode="file"):
         scanBtn.setEnabled(False)
 
         ui_inputs = gather_ui_inputs()
+        # save this to display in the checkpoint string when importing
+        mw.mr_worker.importDeckName = ui_inputs['tag_for_new_cards']
 
         mw.mr_worker.refresh_inputs(hidden_cfg['anki_db_path'],
             hidden_cfg['anki_db_field_indices'],
@@ -357,7 +375,7 @@ def showTextScanner(ui_mode="file"):
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'],
+            #ui_inputs['output_path'],
             hidden_cfg['input_encoding'],
             hidden_cfg['target_note_type'],
             hidden_cfg['note_target_maps'],
@@ -387,6 +405,6 @@ def showTextScanner(ui_mode="file"):
         cancelBtn.clicked.connect(onCancel)
 
     dialog = MatterRabbitWindow(outerLayout, onDialogClose, mw)
-    dialog.resize(900,700)
+    dialog.resize(900,650)
     dialog.setWindowTitle('Chinese Text Scanner')
     dialog.show()

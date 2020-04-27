@@ -3,9 +3,11 @@ from .mr_text_scanner import TextScanner
 from .mr_note_maker import NoteMaker
 from .database import Dictionary
 from os.path import dirname, join, realpath
+import genanki
 
 class TextScannerThreadAsync(QtCore.QThread):
     sig = QtCore.pyqtSignal(str)
+    NotePackageSig = QtCore.pyqtSignal(genanki.Package)
 
     def __init__(self):
         super().__init__()
@@ -27,7 +29,7 @@ class TextScannerThreadAsync(QtCore.QThread):
     file_or_dir,
     file_to_scan,
     tag_for_new_cards,
-    output_path,
+    #output_path,
     input_encoding,
     target_note_type,
     note_target_maps,
@@ -40,7 +42,7 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.file_or_dir = file_or_dir
         self.file_to_scan = file_to_scan
         self.tag_for_new_cards = tag_for_new_cards
-        self.output_path = output_path
+        self.output_path = None #output_path
         self.input_encoding = input_encoding
         self.target_note_type = target_note_type
         self.note_target_maps = note_target_maps
@@ -99,7 +101,8 @@ class TextScannerThreadAsync(QtCore.QThread):
                 new_notes = self.new_char_words
 
             self.sig.emit(f"\nPreparing to make {len(new_notes)} new notes")
-            nm.make_notes(new_notes, self.tag_for_new_cards, self.output_path, self.tag_for_new_cards, include_sound)
+            package = nm.make_notes(new_notes, self.tag_for_new_cards, self.output_path, self.tag_for_new_cards, include_sound)
+            self.NotePackageSig.emit(package)
 
             if self.interrupt_and_quit == False:
                 self.sig.emit("\nThanks for using the scanner!")

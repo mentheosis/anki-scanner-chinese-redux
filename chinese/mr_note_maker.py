@@ -218,9 +218,10 @@ class NoteMaker:
                 apkg.media_files = media_paths
 
             try:
-                apkg.write_to_file(out_path)
-                self.printOrLog(f"Note maker wrote {len(rawNoteDict)} new notes to to {join(dirname(realpath(__file__)),out_path)}")
-                self.printOrLog(f"You can now import your apkg file to anki.")
+                #apkg.write_to_file(out_path)
+                #self.printOrLog(f"Note maker wrote {len(rawNoteDict)} new notes to to {join(dirname(realpath(__file__)),out_path)}")
+                #self.printOrLog(f"You can now import your apkg file to anki.")
+                return apkg
             except:
                 e = traceback.format_exc()
                 self.printOrLog("\nThe note maker encountered an error. Please make sure that your output path is in an existing directory (case sensitive)")
