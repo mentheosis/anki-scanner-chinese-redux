@@ -26,7 +26,8 @@ from aqt.utils import openLink
 
 from .about import CSR_GITHUB_URL, showAbout
 
-from .mr_scanner_ui import showTextScanner
+from .mr_ui_scanner import showTextScanner
+from .mr_ui_note_config import showConfigNoteTypes
 from .singletons import config
 
 
@@ -55,6 +56,7 @@ def load_menu():
     add_menu(menu_text)
     add_menu_item(menu_text, _('Scan file'), lambda:showTextScanner("file"))
     add_menu_item(menu_text, _('Scan pasted text'), lambda:showTextScanner("clipboard"))
+    add_menu_item(menu_text, _('Configure target note type'), lambda:showConfigNoteTypes())
     if dev_mode == True:
         add_menu_item(menu_text, _('Query anki db'), lambda:showTextScanner("dev"))
     add_menu_item(menu_text, _('About this addon'), showAbout)

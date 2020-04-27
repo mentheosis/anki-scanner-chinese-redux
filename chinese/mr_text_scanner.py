@@ -1,8 +1,10 @@
-import os
+import os, json, traceback
 from os.path import dirname, join, realpath
+from sqlite3 import connect
 import jieba
 import re
-from sqlite3 import connect
+from .mr_anki_db_client import AnkiDbClient
+
 
 class ChineseNote:
     def __init__(self, word, simplified, traditional, pinyin="", definition="", sort_order=0, sentence="", count=0, frequency="unknown"):
@@ -35,6 +37,7 @@ class TextScanner:
         self.tags_to_exclude = tags_to_exclude
         self.emitter = emitter
         self.thread_obj = thread_obj
+        self.newDbClient = AnkiDbClient(anki_db_file_path, self.printOrLog)
 
     def printOrLog(self,text=""):
         if self.emitter != None and self.thread_obj != None and self.thread_obj.interrupt_and_quit == False:
@@ -127,39 +130,11 @@ class TextScanner:
         sentences = re.split(sentence_delimiters,raw_text.replace('\n', '').strip())
         return self.parse_sentences_with_jieba(sentences)
 
-    '''
-    sql lite schema for reference
-    CREATE TABLE sqlite_master (
-      type TEXT,
-      name TEXT,
-      tbl_name TEXT,
-      rootpage INTEGER,
-      sql TEXT
-    );
-    '''
-    ## just a debugging method to explore anki file
-    def query_db(self, query = 'master'):
-        db_path = self.anki_db_file_path
-        conn = connect(db_path)
-        c = conn.cursor()
 
-        if query == 'master':
-            #query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
-            #query = 'select type tbl_name from SQLITE_MASTER'
-            #query = 'select * from notes'
-            #query = "select distinct flds from notes where tags not like '%HSK6%' "
-            query = 'select * from sqlite_master'
-        self.printOrLog(f"query {query}")
-        c.execute(query)
-        already_have_words = {}
-        for row in c:
-            if query == 'select * from sqlite_master':
-                self.printOrLog(f"\n\nrow\n {row[0]}, {row[1]}, {row[2]}, {row[3]}")
-                sub_row = row[4].split("\n")
-                for sub in sub_row:
-                    self.printOrLog(sub)
-            else:
-                self.printOrLog(f"\n\nrow\n {row}")
+    ## just a debugging method to explore anki file
+    def query_db(self, query):
+        self.newDbClient.query_db(query)
+
 
     '''
     file_path: path to an anki2 file, which is a sqllite file that
