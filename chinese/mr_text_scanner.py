@@ -62,6 +62,32 @@ class TextScanner:
                         definition += "<br><br>"+char+"<br>"+char_lookup[0][1]
         return definition
 
+    ## because jieba sometimes parses words that are not found in our dictionary,
+    # we need to be careful not to throw away words and charactes from text
+    # just because our dictionary doesnt have an entry.
+    #
+    # This function will use our dictionary if possible for simplified and traditional split
+    # but will fall back on the scanned word itself at least. We should always be able to find pinyin too
+    #
+    # If the word is determine to not be chinese at all, this will return None, None
+    # otherwise returns Simplfied, Traditional
+    def try_get_word_basics(self,word):
+        # we can skip trying to futher process things like punctuation, numbers, etc
+        # by checking if the first character is in our dictionary
+        isChineseOrNot = self.dictionary._get_word(word[0],"simp")
+        if isChineseOrNot != None:
+            simp = self.dictionary._get_word(word,"simp")
+            if simp != None:
+                trad = self.dictionary._get_word(word,"trad")
+            else:
+                # in this case the Jieba dictionary found a word that our dictionary doesn't know
+                # we'll at least get the pinyin and below get the per-character definition.
+                simp = word
+                trad = word
+            return simp, trad
+        else:
+            return None, None
+
     def parse_sentences_with_jieba(self, sentences):
         jieba_words = {}
         i = 0
@@ -71,20 +97,9 @@ class TextScanner:
             #cut_all=False means "accurate mode" https://github.com/fxsjy/jieba
             seg_list = jieba.cut(text, cut_all=False)
             for word in seg_list:
-                i += 1
-                # we can skip trying to futher process things like punctuation, numbers, etc
-                # by checking if the first character is in our dictionary
-                isChineseOrNot = self.dictionary._get_word(word[0],"simp")
-                if isChineseOrNot != None:
-                    simp = self.dictionary._get_word(word,"simp")
-                    if simp != None:
-                        trad = self.dictionary._get_word(word,"trad")
-                    else:
-                        # in this case the Jieba dictionary found a word that our dictionary doesn't know
-                        # we'll at least get the pinyin and below get the per-character definition.
-                        simp = word
-                        trad = word
-
+                simp, trad = self.try_get_word_basics(word)
+                if simp != None:
+                    i += 1
                     if jieba_words.get(simp) == None:
                         pinyin = self.dictionary.get_pinyin(simp,'simp')
                         definition = self.try_find_definition_by_char(simp)
@@ -168,9 +183,8 @@ class TextScanner:
             if exclude == False:
                 for idx in self.anki_note_indices:
                     word = note_fields[idx]
-                    simp = self.dictionary._get_word(word,"simp")
+                    simp, trad = self.try_get_word_basics(word)
                     if simp != None and already_have_words.get(simp) == None:
-                        trad = self.dictionary._get_word(word,"trad")
                         pinyin = self.dictionary.get_pinyin(simp,'simp')
                         already_have_words[simp] = ChineseNote(word,simp,trad,pinyin)
         return already_have_words
