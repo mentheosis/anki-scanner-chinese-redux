@@ -7,3 +7,4 @@ genanki
 jieba
 gtts
 setuptools
+pip
