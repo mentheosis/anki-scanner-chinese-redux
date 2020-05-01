@@ -49,6 +49,14 @@
             "doc": "One of 'new_chars', 'new_words', or 'new_char_words' - determines which set will be made into new anki notes.",
             "val": "new_char_words"
         },
+        "target_note_type":{
+            "doc": "ID of the note type in the existing collection that will be used to generate new notes",
+            "val": null
+        },
+        "note_target_maps":{
+            "doc": "A dictionary of existing anki note types, and the mappings from scanner fields to note fields",
+            "val": {}
+        },
         "dev_mode":{
           "doc": "Change the add-on into dev mode with some extra controls and a different menu label. Restart Anki after changing this value to see the new mode.",
           "val": false

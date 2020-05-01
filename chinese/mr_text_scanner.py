@@ -1,8 +1,10 @@
-import os
+import os, json, traceback
 from os.path import dirname, join, realpath
+from sqlite3 import connect
 import jieba
 import re
-from sqlite3 import connect
+from .mr_anki_db_client import AnkiDbClient
+
 
 class ChineseNote:
     def __init__(self, word, simplified, traditional, pinyin="", definition="", sort_order=0, sentence="", count=0, frequency="unknown"):
@@ -35,6 +37,7 @@ class TextScanner:
         self.tags_to_exclude = tags_to_exclude
         self.emitter = emitter
         self.thread_obj = thread_obj
+        self.newDbClient = AnkiDbClient(anki_db_file_path, self.printOrLog)
 
     def printOrLog(self,text=""):
         if self.emitter != None and self.thread_obj != None and self.thread_obj.interrupt_and_quit == False:
@@ -45,6 +48,46 @@ class TextScanner:
     ##############################
     ### Input text functions
 
+    def try_find_definition_by_char(self,word):
+        lookup = self.dictionary.get_definitions(word,"en")
+        definition = ""
+        if len(lookup) != 0:
+            definition = lookup[0][1]
+        if len(lookup) == 0 and len(word) > 0:
+            definition = "by char: "
+            for char in word:
+                if char != "一":
+                    char_lookup = self.dictionary.get_definitions(char,"en")
+                    if len(char_lookup) != 0:
+                        definition += "<br><br>"+char+"<br>"+char_lookup[0][1]
+        return definition
+
+    ## because jieba sometimes parses words that are not found in our dictionary,
+    # we need to be careful not to throw away words and charactes from text
+    # just because our dictionary doesnt have an entry.
+    #
+    # This function will use our dictionary if possible for simplified and traditional split
+    # but will fall back on the scanned word itself at least. We should always be able to find pinyin too
+    #
+    # If the word is determine to not be chinese at all, this will return None, None
+    # otherwise returns Simplfied, Traditional
+    def try_get_word_basics(self,word):
+        # we can skip trying to futher process things like punctuation, numbers, etc
+        # by checking if the first character is in our dictionary
+        isChineseOrNot = self.dictionary._get_word(word[0],"simp")
+        if isChineseOrNot != None:
+            simp = self.dictionary._get_word(word,"simp")
+            if simp != None:
+                trad = self.dictionary._get_word(word,"trad")
+            else:
+                # in this case the Jieba dictionary found a word that our dictionary doesn't know
+                # we'll at least get the pinyin and below get the per-character definition.
+                simp = word
+                trad = word
+            return simp, trad
+        else:
+            return None, None
+
     def parse_sentences_with_jieba(self, sentences):
         jieba_words = {}
         i = 0
@@ -54,21 +97,16 @@ class TextScanner:
             #cut_all=False means "accurate mode" https://github.com/fxsjy/jieba
             seg_list = jieba.cut(text, cut_all=False)
             for word in seg_list:
-                i += 1
-                simp = self.dictionary._get_word(word,"simp")
+                simp, trad = self.try_get_word_basics(word)
                 if simp != None:
+                    i += 1
                     if jieba_words.get(simp) == None:
-                        trad = self.dictionary._get_word(word,"trad")
                         pinyin = self.dictionary.get_pinyin(simp,'simp')
-
-                        lookup = self.dictionary.get_definitions(word,"en")
-                        definition = ""
-                        if len(lookup) != 0:
-                            definition = lookup[0][1]
-
+                        definition = self.try_find_definition_by_char(simp)
                         jieba_words[simp] = ChineseNote(word,simp,trad,pinyin,definition,i,text,1)
                     else:
                         jieba_words[simp].incrCount()
+
         return jieba_words
 
     #param rel_path: relative path to unzipped epub director containing a bunch of xhtml
@@ -107,39 +145,11 @@ class TextScanner:
         sentences = re.split(sentence_delimiters,raw_text.replace('\n', '').strip())
         return self.parse_sentences_with_jieba(sentences)
 
-    '''
-    sql lite schema for reference
-    CREATE TABLE sqlite_master (
-      type TEXT,
-      name TEXT,
-      tbl_name TEXT,
-      rootpage INTEGER,
-      sql TEXT
-    );
-    '''
-    ## just a debugging method to explore anki file
-    def query_db(self, query = 'master'):
-        db_path = self.anki_db_file_path
-        conn = connect(db_path)
-        c = conn.cursor()
 
-        if query == 'master':
-            #query = 'SELECT pinyin, pinyin_tw FROM cidian WHERE traditional=?'
-            #query = 'select type tbl_name from SQLITE_MASTER'
-            #query = 'select * from notes'
-            #query = "select distinct flds from notes where tags not like '%HSK6%' "
-            query = 'select * from sqlite_master'
-        self.printOrLog(f"query {query}")
-        c.execute(query)
-        already_have_words = {}
-        for row in c:
-            if query == 'select * from sqlite_master':
-                self.printOrLog(f"\n\nrow\n {row[0]}, {row[1]}, {row[2]}, {row[3]}")
-                sub_row = row[4].split("\n")
-                for sub in sub_row:
-                    self.printOrLog(sub)
-            else:
-                self.printOrLog(f"\n\nrow\n {row}")
+    ## just a debugging method to explore anki file
+    def query_db(self, query):
+        self.newDbClient.query_db(query)
+
 
     '''
     file_path: path to an anki2 file, which is a sqllite file that
@@ -173,9 +183,8 @@ class TextScanner:
             if exclude == False:
                 for idx in self.anki_note_indices:
                     word = note_fields[idx]
-                    simp = self.dictionary._get_word(word,"simp")
+                    simp, trad = self.try_get_word_basics(word)
                     if simp != None and already_have_words.get(simp) == None:
-                        trad = self.dictionary._get_word(word,"trad")
                         pinyin = self.dictionary.get_pinyin(simp,'simp')
                         already_have_words[simp] = ChineseNote(word,simp,trad,pinyin)
         return already_have_words

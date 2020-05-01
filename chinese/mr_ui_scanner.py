@@ -1,131 +1,38 @@
 ###################
 ## UI screens
-import time
 from aqt import mw
-from aqt.utils import askUser, showInfo
-from anki.find import Finder
-
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
+from PyQt5.QtWidgets import QMainWindow, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
-from os.path import dirname, join, realpath
-
+import traceback
+from .mr_async_worker_thread import TextScannerThreadAsync
 from .singletons import config
-from .database import Dictionary
-from .mr_text_scanner import TextScanner
-from .mr_note_maker import NoteMaker
 
-dev_mode = False
-if config['textScanner']['dev_mode']['val'] == True:
-    dev_mode = True
 
-class TextScannerThreadAsync(QtCore.QThread):
-    sig = QtCore.pyqtSignal(str)
+# class that we will use to generate all our UI windows
+class MatterRabbitWindow(QMainWindow):
+    def __init__(self, contentLayout, onCloseFn, parent=None):
+        super(MatterRabbitWindow, self).__init__(parent)
+        self.onCloseFn = onCloseFn
+        self.setCentralWidget(QWidget(self))
+        self.centralWidget().setLayout(contentLayout)
 
-    def __init__(self):
-        super().__init__()
-        # internal default params
-        self.interrupt_and_quit = False
-        self.run_mode = "scan"
+    def closeEvent(self, evnt):
+        self.onCloseFn()
 
-    def refresh_query(self, anki_db_path, query):
-        self.anki_db_path = anki_db_path
-        self.query = query
 
-    def refresh_inputs(self,
-    anki_db_path,
-    anki_db_field_indices,
-    anki_tags_to_exclude,
-    include_sound,
-    media_dir_path,
-    file_or_dir,
-    file_to_scan,
-    tag_for_new_cards,
-    output_path,
-    input_encoding,
-    scan_mode):
-        self.anki_db_path = anki_db_path
-        self.anki_db_field_indices = anki_db_field_indices
-        self.anki_tags_to_exclude = anki_tags_to_exclude
-        self.include_sound = include_sound
-        self.media_dir_path = media_dir_path
-        self.file_or_dir = file_or_dir
-        self.file_to_scan = file_to_scan
-        self.tag_for_new_cards = tag_for_new_cards
-        self.output_path = output_path
-        self.input_encoding = input_encoding
-        self.scan_mode = scan_mode
-
-    def setMode(self,mode):
-        self.interrupt_and_quit = False
-        self.run_mode = mode
-
-    def run(self):
-        if self.run_mode == 'scan':
-            dictionary = Dictionary()
-            # worker thread needs its own dictionry, so cant use singleton here
-            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
-            sc = TextScanner(dictionary, joined_db_path, self.anki_db_field_indices, self.anki_tags_to_exclude, self.sig, self)
-            self.new_char_words, self.new_words, self.new_chars = sc.scan_and_print(self.file_to_scan, self.file_or_dir, self.input_encoding, self.scan_mode)
-            dictionary.conn.close()
-
-        elif self.run_mode == 'print':
-            to_print={}
-            if self.scan_mode == "new_words":
-                to_print = self.new_words
-            elif self.scan_mode == "new_chars":
-                to_print = self.new_chars
-            else:
-                to_print = self.new_char_words
-            i = 1
-            for note in to_print:
-                item = to_print[note]
-                self.sig.emit(f"\nSimplified: {item.simplified}, Traditional: {item.traditional}, Pinyin: {item.pinyin}\nDefinition: {item.definition}\nIndex: {i}, First appearance: {item.sort_order}, Count: {item.count}\nSentence: {item.sentence}")
-                i += 1
-
-        elif self.run_mode == 'make_notes':
-            dictionary = Dictionary()
-            nm = NoteMaker(dictionary, self.media_dir_path, self.sig, self)
-
-            if self.include_sound == 'true' or self.include_sound == 'True':
-                include_sound = True
-            else:
-                include_sound = False
-
-            if self.scan_mode == "new_words":
-                new_notes = self.new_words
-            elif self.scan_mode == "new_chars":
-                new_notes = self.new_chars
-            else:
-                new_notes = self.new_char_words
-
-            self.sig.emit(f"\nPreparing to make {len(new_notes)} new notes")
-            nm.make_notes(new_notes, self.tag_for_new_cards, self.output_path, self.tag_for_new_cards, include_sound)
-
-            if self.interrupt_and_quit == False:
-                self.sig.emit("\nThanks for using the scanner! You can now import your apkg file to anki.")
-            else:
-                self.sig.emit("\nExiting early, no package made, thanks for using the scanner!")
-            dictionary.conn.close()
-
-        elif self.run_mode == 'query_db':
-            # worker thread needs its own dictionry, so cant use singleton here
-            dictionary = Dictionary()
-            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
-            sc = TextScanner(dictionary, joined_db_path, [], [], self.sig, self)
-            sc.query_db(self.query)
-            dictionary.conn.close()
-
-        else:
-            self.sig.emit(f"Worker thread has nothing to do for mode {self.run_mode}...")
-
+##########################################################
+# Util function for the scanner dialog window to gather up needed config and controls
+##
 def gatherControls(config, ui_mode="file"):
     config_inputs = {
         'anki_db_path':'',
         'anki_db_field_indices':'',
         'media_dir_path':'',
         'file_or_dir':'',
-        'input_encoding':''
+        'input_encoding':'',
+        'target_note_type':'',
+        'note_target_maps':''
     }
 
     ui_inputs = {
@@ -134,16 +41,15 @@ def gatherControls(config, ui_mode="file"):
                 a whole collection of files at once by changing the file_or_dir
                 property in the config to dir, and then putting the dir path here.</span>''',
         'scan_mode':'''<br><span><b>Mode:</b><br>Choose whether to produce a card for every new words, every new inidividual character, or only new words using new characters</span>''',
-        'output_path':'''<br><span><b>Output path:</b><br>Where the resulting .apkg file should be placed
-                (including the filename.apkg)</span>''',
+        # replaced by auto-import
+        #'output_path':'''<br><span><b>Output path:</b><br>Where the resulting .apkg file should be placed
+        #        (including the filename.apkg)</span>''',
         'tag_for_new_cards':'''<br><span><b>Imported deck/tag name:</b><br>This string cannot contain
                 spaces. It will be applied to all new notes as a tag,
                 and will also be the name of the deck imported.</span>''',
         'anki_tags_to_exclude':'''<br><span><b>Tags to exclude:</b><br>
-                A comma separated list of tags, these will be excluded from
-                the de-duping process. That means the scanner will still
-                consider a word to be new, even if it contains a character
-                in one of your existing notes tagged with one of these tags</span>''',
+                A comma separated list of tags, the scanner will still
+                consider a word to be new if its in your collection with one of these tags</span>''',
         'include_sound':'''<br><span><b>Include sound files:</b><br>If this is true, the scanner will
                 download sound files of the word readings and include them as media in the generated notes.</span>'''
     }
@@ -165,7 +71,8 @@ def gatherControls(config, ui_mode="file"):
     if ui_mode == 'dev':
         label = QLabel()
         label.setWordWrap(True)
-        label_text = '''<br><span><b>Query anki db:</b><br>You can run a sqlite query to probe the anki notes db</span>'''
+        label_text = '''<br><span><b>Query anki db:</b><br>You can run a sqlite query to probe the anki notes db.
+                        Some common queries have been given easy aliases. Try running 'master' or 'models'</span>'''
         label.setText(label_text)
         query_input = QPlainTextEdit()
         controls.append({"key":"query_db", "label":label, "input":query_input})
@@ -238,15 +145,13 @@ def gatherControls(config, ui_mode="file"):
     return controls, hidden_cfg
 
 
-class ScanDialog(QDialog):
-    def __init__(self, onCloseFn, parent=None):
-        super(ScanDialog, self).__init__(parent)
-        self.onCloseFn = onCloseFn
 
-    def closeEvent(self, evnt):
-        self.onCloseFn()
-
+#########################################################
+# This is the main text scanning and dev-mode UI window
+##
 def showTextScanner(ui_mode="file"):
+    mw.mr_worker = TextScannerThreadAsync()
+
     outerLayout = QVBoxLayout()
     colLayout = QHBoxLayout()
     leftLayout = QVBoxLayout()
@@ -256,13 +161,10 @@ def showTextScanner(ui_mode="file"):
     topLabel = QLabel()
     topLabel.setWordWrap(True)
     topLabel.setText('''<div style="font-weight: bold; font-size:24px; width: 5em; text-align:center;">
-        Welcome to the Chinese Text Scanner!
-        <br> 大家好，这是兔子先生的魔法扫描字器！
-        </div><span>This will scan a text file, find any chinese words that contain
-        new characters not already in the provided anki collection, and then produce
-        an .apkg file which can be imported into anki. The import file will contain
-        notes for all the new words, including tone colors and audio files powered
-        by the chinese-support-redux project. Additional options are available in the config file.</span><br>''')
+        大家好，这是兔子先生的魔法扫描字器！</div>
+        <div>Welcome to the Chinese Text Scanner! This will find any chinese words that are not already in your anki collection.
+        It will then automatically import those words as notes into your collecton. Please be sure to configure your note types first, you can find the option in the text scanner menu.</div>
+        <br>''')
     #label.setOpenExternalLinks(True)
     outerLayout.addWidget(topLabel)
     #outerLayout.addStretch()
@@ -333,16 +235,15 @@ def showTextScanner(ui_mode="file"):
     outerLayout.addLayout(colLayout)
     #layout.addWidget(buttonBox)
 
-    mw.exiting = False
     def updateTextOutput(text):
-        if mw.exiting == False:
+        if mw.mr_worker.exiting == False:
             outputText.append(text)
 
     def resetButton():
-        if mw.exiting == False and ui_mode != 'dev':
+        if mw.mr_worker.exiting == False and ui_mode != 'dev':
             scanBtn.setEnabled(True)
             cancelBtn.setEnabled(False)
-            if hasattr(mw.worker,'new_chars'):
+            if hasattr(mw.mr_worker,'new_chars'):
                 printBtn.setEnabled(True)
                 noteBtn.setEnabled(True)
 
@@ -373,21 +274,34 @@ def showTextScanner(ui_mode="file"):
         config.save()
         return ui_inputs
 
-    mw.worker = TextScannerThreadAsync()
-    mw.worker.sig.connect(updateTextOutput)
-    mw.worker.finished.connect(resetButton)
+    def onAnkiPackageReady(package):
+        try:
+            # creates a menu item in edit menu to undo
+            checkString = f"TextScanner import {mw.mr_worker.importDeckName}"
+            mw.checkpoint(checkString)
+            package.write_to_collection_from_addon()
+            # refreshes main view so new deck is visible
+            mw.reset()
+            updateTextOutput(f"Your new words have successfully been imported to anki!")
+        except:
+            e = traceback.format_exc()
+            updateTextOutput(f"\nError: {e}")
+
+    mw.mr_worker.sig.connect(updateTextOutput)
+    mw.mr_worker.NotePackageSig.connect(onAnkiPackageReady)
+    mw.mr_worker.finished.connect(resetButton)
 
     # dev mode sqlite query
     def runQuery():
         outputText.setText("")
         ui_inputs = gather_ui_inputs()
-        mw.worker.refresh_query(hidden_cfg['anki_db_path'],ui_inputs['query_db'])
-        mw.worker.setMode('query_db')
-        mw.worker.start()
+        mw.mr_worker.refresh_query(hidden_cfg['anki_db_path'],ui_inputs['query_db'])
+        mw.mr_worker.setMode('query_db')
+        mw.mr_worker.start()
 
     # the main file or text scan
     def runScanner():
-        outputText.setText("Starting scan...")
+        outputText.setText("Running the scan...")
         cancelBtn.setEnabled(True)
         printBtn.setEnabled(False)
         noteBtn.setEnabled(False)
@@ -395,7 +309,7 @@ def showTextScanner(ui_mode="file"):
 
         ui_inputs = gather_ui_inputs()
 
-        mw.worker.refresh_inputs(
+        mw.mr_worker.refresh_inputs(
             hidden_cfg['anki_db_path'],
             hidden_cfg['anki_db_field_indices'],
             ui_inputs['anki_tags_to_exclude'].split(','),
@@ -404,11 +318,13 @@ def showTextScanner(ui_mode="file"):
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'],
+            #ui_inputs['output_path'],
             hidden_cfg['input_encoding'],
+            hidden_cfg['target_note_type'],
+            hidden_cfg['note_target_maps'],
             ui_inputs['scan_mode'])
-        mw.worker.setMode('scan')
-        mw.worker.start()
+        mw.mr_worker.setMode('scan')
+        mw.mr_worker.start()
 
     def printWords():
         cancelBtn.setEnabled(True)
@@ -418,7 +334,7 @@ def showTextScanner(ui_mode="file"):
 
         ui_inputs = gather_ui_inputs()
 
-        mw.worker.refresh_inputs(hidden_cfg['anki_db_path'],
+        mw.mr_worker.refresh_inputs(hidden_cfg['anki_db_path'],
             hidden_cfg['anki_db_field_indices'],
             ui_inputs['anki_tags_to_exclude'].split(','),
             str(ui_inputs['include_sound']),
@@ -426,8 +342,10 @@ def showTextScanner(ui_mode="file"):
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'],
+            #ui_inputs['output_path'],
             hidden_cfg['input_encoding'],
+            hidden_cfg['target_note_type'],
+            hidden_cfg['note_target_maps'],
             ui_inputs['scan_mode'])
 
         if ui_inputs['scan_mode'] == "new_chars":
@@ -435,8 +353,8 @@ def showTextScanner(ui_mode="file"):
         else:
             outputText.setText("Displaying words ready for note creation")
 
-        mw.worker.setMode('print')
-        mw.worker.start()
+        mw.mr_worker.setMode('print')
+        mw.mr_worker.start()
 
     def makeNotes():
         outputText.setText("")
@@ -446,8 +364,10 @@ def showTextScanner(ui_mode="file"):
         scanBtn.setEnabled(False)
 
         ui_inputs = gather_ui_inputs()
+        # save this to display in the checkpoint string when importing
+        mw.mr_worker.importDeckName = ui_inputs['tag_for_new_cards']
 
-        mw.worker.refresh_inputs(hidden_cfg['anki_db_path'],
+        mw.mr_worker.refresh_inputs(hidden_cfg['anki_db_path'],
             hidden_cfg['anki_db_field_indices'],
             ui_inputs['anki_tags_to_exclude'].split(','),
             str(ui_inputs['include_sound']),
@@ -455,21 +375,23 @@ def showTextScanner(ui_mode="file"):
             hidden_cfg['file_or_dir'],
             ui_inputs['file_to_scan'],
             ui_inputs['tag_for_new_cards'],
-            ui_inputs['output_path'],
+            #ui_inputs['output_path'],
             hidden_cfg['input_encoding'],
+            hidden_cfg['target_note_type'],
+            hidden_cfg['note_target_maps'],
             ui_inputs['scan_mode'])
 
-        mw.worker.setMode('make_notes')
-        mw.worker.start()
+        mw.mr_worker.setMode('make_notes')
+        mw.mr_worker.start()
 
     def onCancel():
         resetButton()
-        if hasattr(mw,'worker'):
-            mw.worker.interrupt_and_quit = True
-            mw.worker.sig.emit("told worker to quit..")
+        if hasattr(mw,'mr_worker'):
+            mw.mr_worker.interrupt_and_quit = True
+            mw.mr_worker.sig.emit("told worker to quit..")
 
     def onDialogClose():
-        mw.exiting = True
+        mw.mr_worker.exiting = True
         onCancel()
 
     if ui_mode == "dev":
@@ -477,13 +399,12 @@ def showTextScanner(ui_mode="file"):
         queryBtn.clicked.connect(runQuery)
     else:
         scanBtn.clicked.connect(runScanner)
+        scanBtn.setStyleSheet("background-color: #8DE1DD")
         printBtn.clicked.connect(printWords)
         noteBtn.clicked.connect(makeNotes)
         cancelBtn.clicked.connect(onCancel)
 
-    dialog = ScanDialog(onDialogClose, mw)
-    dialog.resize(900,800)
-    #dialog.setStyleSheet("background-color: #CCCCCC")
+    dialog = MatterRabbitWindow(outerLayout, onDialogClose, mw)
+    dialog.resize(900,650)
     dialog.setWindowTitle('Chinese Text Scanner')
-    dialog.setLayout(outerLayout)
-    dialog.exec_()
+    dialog.show()
