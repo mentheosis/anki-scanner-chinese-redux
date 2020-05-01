@@ -1,4 +1,3 @@
-pip
 coverage
 hypothesis
 pytest-cov

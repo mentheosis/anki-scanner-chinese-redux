@@ -34,7 +34,7 @@ venv/bin/activate: requirements-to-freeze.txt
 lib: venv/bin/activate
 	rm -fr chinese/lib
 	mkdir chinese/lib
-	cp -R virtual_env/lib/python$(PYTHON3_VERSION)/site-packages/ chinese/lib/
+	cp -R virtual_env/lib/python$(PYTHON3_VERSION)/site-packages/. chinese/lib/
 
 test:
 	"$(PYTEST)" --cov="$(PROJECT_SHORT)" tests -v
