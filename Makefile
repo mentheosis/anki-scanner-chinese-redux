@@ -21,7 +21,6 @@ PYTEST=pytest
 
 all: test prep pack clean
 
-# pipenv seems to be dead...
 venv/bin/activate: requirements-to-freeze.txt
 	rm -rf virtual_env/
 	python3 -m venv virtual_env
@@ -38,6 +37,9 @@ lib: venv/bin/activate
 
 test:
 	"$(PYTEST)" --cov="$(PROJECT_SHORT)" tests -v
+
+package: lib
+	./package-for-anki.sh
 
 prep:
 	rm -f $(PROJECT_LONG)-v*.zip
