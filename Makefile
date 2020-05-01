@@ -26,7 +26,7 @@ venv/bin/activate: requirements-to-freeze.txt
 	rm -rf virtual_env/
 	python3 -m venv virtual_env
 	. virtual_env/bin/activate ;\
-	pip install --upgrade pip
+	pip install --upgrade pip ;\
 	pip install -Ur requirements-to-freeze.txt ;\
 	pip freeze | sort > requirements.txt
 	touch virtual_env/bin/activate  # update so it's as new as requirements-to-freeze.txt
