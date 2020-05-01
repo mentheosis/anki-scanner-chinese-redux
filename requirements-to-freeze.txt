@@ -1,3 +1,4 @@
+pip
 coverage
 hypothesis
 pytest-cov
@@ -7,4 +8,3 @@ genanki
 jieba
 gtts
 setuptools
-pip
