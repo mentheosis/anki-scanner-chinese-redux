@@ -13,12 +13,28 @@
 # PERFORMANCE OF THIS SOFTWARE.
 
 export PYTHONPATH=.
+PYTHON3_VERSION=$(shell python3 -c "import sys;t='{v[0]}.{v[1]}'.format(v=list(sys.version_info[:2]));sys.stdout.write(t)")
 VERSION=`cat _version.py | grep __version__ | sed "s/.*'\(.*\)'.*/\1/"`
 PROJECT_SHORT=chinese
 PROJECT_LONG=chinese-support-redux
 PYTEST=pytest
 
 all: test prep pack clean
+
+# pipenv seems to be dead...
+venv/bin/activate: requirements-to-freeze.txt
+	rm -rf virtual_env/
+	python3 -m venv virtual_env
+	. virtual_env/bin/activate ;\
+	pip install --upgrade pip ;\
+	pip install -Ur requirements-to-freeze.txt ;\
+	pip freeze | sort > requirements.txt
+	touch virtual_env/bin/activate  # update so it's as new as requirements-to-freeze.txt
+
+lib: venv/bin/activate
+	rm -fr chinese/lib
+	mkdir chinese/lib
+	cp -R virtual_env/lib/python$(PYTHON3_VERSION)/site-packages/. chinese/lib/
 
 test:
 	"$(PYTEST)" --cov="$(PROJECT_SHORT)" tests -v

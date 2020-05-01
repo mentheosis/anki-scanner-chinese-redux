@@ -1,0 +1,9 @@
+coverage
+hypothesis
+pytest-cov
+pytest
+PyQt5
+genanki
+jieba
+gtts
+setuptools
