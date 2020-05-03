@@ -8,6 +8,8 @@ from .mr_anki_db_client import AnkiDbClient
 
 class NoteMaker:
     def __init__(self, dictionary, external_media_path, anki_db_file_path, target_note_type=None, note_target_maps={}, emitter=None, thread_obj=None):
+        self.emitter = emitter
+        self.thread_obj = thread_obj
         self.dictionary = dictionary
         self.external_media_path = external_media_path
         self.target_note_type = target_note_type
@@ -17,8 +19,6 @@ class NoteMaker:
             self.target_note_type = 'defaultScannerModel'
 
         self.note_target_maps = note_target_maps
-        self.emitter = emitter
-        self.thread_obj = thread_obj
         self.AnkiDbClient = AnkiDbClient(anki_db_file_path, self.printOrLog)
 
         # this is the list of fields that can be generated to offer to the UI
@@ -217,7 +217,7 @@ class NoteMaker:
             if self.target_note_type == 'defaultScannerModel':
                 self.printOrLog("\nPreparing new words using the default note model. You can configure which of your existing note models will be used from scanner menu on the anki main window.")
             else:
-                self.printOrLog(f"\nPreparing new words using using the {self.existing_models[self.target_note_type].name} note model")
+                self.printOrLog(f"\nPreparing new words using using the {self.existing_models[self.target_note_type]['name']} note model")
 
             self.set_note_model()
             self.printOrLog("\nNow gathering enrichment data for the words, this may take a while, especially if you are including audio files. The scanner will update progress here every 25 words...")
