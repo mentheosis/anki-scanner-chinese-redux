@@ -61,9 +61,9 @@ def showConfigNoteTypes():
     fieldSelectors = {}
 
     def getConfigSavedTarget(noteType, mr_field):
-        saved = config.config['textScanner']['note_target_maps']['val'].get(noteType)
-        if saved != None:
-            return saved[mr_field]
+        saved = config.config['textScanner'].get('note_target_maps')
+        if saved != None and saved['val'].get(noteType) != None:
+            return saved['val'][noteType].get(mr_field)
 
     def updateTargetMapConfig(target_data):
         if target_data != None:
@@ -121,9 +121,14 @@ def showConfigNoteTypes():
         mw.ChineseScannerData['ignoreNoteTypeSelect'] = True
         for item in mw.mr_worker.note_models:
             selectNoteType.addItem(mw.mr_worker.note_models[item]['name'], item)
-        configSavedNoteType = config.config['textScanner']['target_note_type']['val']
-        targetText = mw.mr_worker.note_models[configSavedNoteType]['name']
-        tidx = selectNoteType.findText(targetText)
+
+        savedTargets = config.config['textScanner'].get('target_note_type')
+        tidx = 0
+        if savedTargets != None:
+            configSavedNoteType = savedTargets.get('val')
+            if configSavedNoteType != None:
+                targetText = mw.mr_worker.note_models[configSavedNoteType]['name']
+                tidx = selectNoteType.findText(targetText)
         if tidx > 0:
             log(f"setting saved note type {configSavedNoteType}")
             selectNoteType.setCurrentIndex(tidx)

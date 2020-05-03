@@ -102,7 +102,10 @@ class TextScannerThreadAsync(QtCore.QThread):
 
             self.sig.emit(f"\nPreparing to make {len(new_notes)} new notes")
             package = nm.make_notes(new_notes, self.tag_for_new_cards, self.output_path, self.tag_for_new_cards, include_sound)
-            self.NotePackageSig.emit(package)
+            if package != None:
+                self.NotePackageSig.emit(package)
+            else:
+                self.sig.emit("\nCould note create anki package")
 
             if self.interrupt_and_quit == False:
                 self.sig.emit("\nThanks for using the scanner!")
