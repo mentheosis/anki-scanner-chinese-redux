@@ -105,7 +105,7 @@ class TextScannerThreadAsync(QtCore.QThread):
             if package != None:
                 self.NotePackageSig.emit(package)
             else:
-                self.sig.emit("\nCould note create anki package")
+                self.sig.emit("\nCould not create anki package")
 
             if self.interrupt_and_quit == False:
                 self.sig.emit("\nThanks for using the scanner!")

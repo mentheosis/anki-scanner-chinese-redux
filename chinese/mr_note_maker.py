@@ -7,10 +7,15 @@ from .sound import sound_with_path
 from .mr_anki_db_client import AnkiDbClient
 
 class NoteMaker:
-    def __init__(self, dictionary, external_media_path, anki_db_file_path, target_note_type=None, note_target_maps=None, emitter=None, thread_obj=None):
+    def __init__(self, dictionary, external_media_path, anki_db_file_path, target_note_type=None, note_target_maps={}, emitter=None, thread_obj=None):
         self.dictionary = dictionary
         self.external_media_path = external_media_path
         self.target_note_type = target_note_type
+
+        # do this defaulting here in case they explicitly pass None, which would override argument default
+        if self.target_note_type == None:
+            self.target_note_type = 'defaultScannerModel'
+
         self.note_target_maps = note_target_maps
         self.emitter = emitter
         self.thread_obj = thread_obj
@@ -32,7 +37,7 @@ class NoteMaker:
             'frequency': '<b>Frequency</b><br>The global frequency of the word as reported by the dictionary'
         }
 
-        self.old_note_model = genanki.Model(
+        self.default_model = genanki.Model(
             1091337104,
             'Import only model',
             fields=[
@@ -68,15 +73,18 @@ class NoteMaker:
             print(text)
 
     def set_note_model(self):
-        self.target_model = self.existing_models[self.target_note_type]
+        if self.target_note_type == 'defaultScannerModel':
+            self.note_model = self.default_model
+        else:
+            self.target_model = self.existing_models[self.target_note_type]
 
-        self.note_model = genanki.Model(
-            self.target_note_type,
-            self.target_model['name'],
-            fields = self.target_model['flds'],
-            templates = self.target_model['tmpls'],
-            css = self.target_model['css']
-        )
+            self.note_model = genanki.Model(
+                self.target_note_type,
+                self.target_model['name'],
+                fields = self.target_model['flds'],
+                templates = self.target_model['tmpls'],
+                css = self.target_model['css']
+            )
 
     def get_anki_note_models(self):
         ''' the models look like this:
@@ -86,7 +94,12 @@ class NoteMaker:
                 tmpls: [{name:'card1'},{},{}..]
                 css: ''
         '''
-        self.existing_models = self.AnkiDbClient.get_anki_note_models()
+        self.existing_models = {}
+        self.existing_models['defaultScannerModel'] = {
+            'name': 'Default scanner model',
+            'flds': [{'name':'Using default settings'}]
+        }
+        self.existing_models.update(self.AnkiDbClient.get_anki_note_models())
         return self.existing_models
 
     def display_existing_node_models(self):
@@ -166,24 +179,29 @@ class NoteMaker:
             'frequency': frequency
         }
 
-        assert len(self.note_model.fields) > 1
-
-        target_map = self.note_target_maps[self.target_note_type]
-        reversed_map = {}
-        for item in target_map:
-            val = target_map[item]
-            reversed_map[val] = item
-
         res = []
-        for target in self.target_model['flds']:
-            t = reversed_map.get(target['name'])
-            if t != None:
-                d = mr_result[t]
-            else:
-                d = ''
-            res.append(d)
+        if self.target_note_type == 'defaultScannerModel':
+            for target in mr_result:
+                res.append(mr_result[target])
+        else:
+            assert len(self.note_model.fields) > 1
 
-        assert len(res) == len(self.note_model.fields)
+            target_map = self.note_target_maps[self.target_note_type]
+            reversed_map = {}
+            for item in target_map:
+                val = target_map[item]
+                reversed_map[val] = item
+
+            for target in self.target_model['flds']:
+                t = reversed_map.get(target['name'])
+                if t != None:
+                    d = mr_result[t]
+                else:
+                    d = ''
+                res.append(d)
+
+            assert len(res) == len(self.note_model.fields)
+
         return res, join(dirname(realpath(__file__)),self.external_media_path,media_path)
 
     # @param rawNoteDict should be a dictionary of ChineseNote objects from ./mr_text_scanner.py
@@ -194,10 +212,15 @@ class NoteMaker:
         )
 
         self.get_anki_note_models()
-        if self.existing_models != None and self.target_note_type != None and self.existing_models.get(self.target_note_type) != None and self.note_target_maps.get(self.target_note_type) != None:
-            self.set_note_model()
 
-            self.printOrLog("\nNote maker is now gathering enrichment data for the words, this may take a while, especially if you are including audio files. The scanner will update progress here every 25 words...")
+        if self.existing_models != None and self.target_note_type != None and self.existing_models.get(self.target_note_type) != None and (self.note_target_maps.get(self.target_note_type) != None or self.target_note_type == 'defaultScannerModel'):
+            if self.target_note_type == 'defaultScannerModel':
+                self.printOrLog("\nPreparing new words using the default note model. You can configure which of your existing note models will be used from scanner menu on the anki main window.")
+            else:
+                self.printOrLog(f"\nPreparing new words using using the {self.existing_models[self.target_note_type].name} note model")
+
+            self.set_note_model()
+            self.printOrLog("\nNow gathering enrichment data for the words, this may take a while, especially if you are including audio files. The scanner will update progress here every 25 words...")
             i = 0
             media_paths = []
             for simp in rawNoteDict:
