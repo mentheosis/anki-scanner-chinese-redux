@@ -22,9 +22,7 @@ Here's an easy way to get started deving:
 
 # Package up a new zip file to publish:
 1. Put the version you want in `chinese/_version.py`
-2. Check the current version with `make version`
-2. `make package` - this builds everything, creates a new zip file in build/ dir
-4. The zip file will be put in build/
+2. `make package` - cleans, builds, creates a new zip file in build/ dir
 
 
 Based on [Chinese-Support-Redux](https://github.com/luoliyan/chinese-support-redux) by Joseph Lorimer which is based on the Chinese Support add-on by Thomas TEMPÉ and many others.
