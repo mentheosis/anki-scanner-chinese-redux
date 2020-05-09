@@ -14,7 +14,7 @@
 
 export PYTHONPATH=.
 PYTHON3_VERSION=$(shell python3 -c "import sys;t='{v[0]}.{v[1]}'.format(v=list(sys.version_info[:2]));sys.stdout.write(t)")
-VERSION=`cat _version.py | grep __version__ | sed "s/.*'\(.*\)'.*/\1/"`
+VERSION=`cat chinese/_version.py | grep __version__ | sed "s/.*'\(.*\)'.*/\1/"`
 PROJECT_SHORT=chinese
 PROJECT_LONG=chinese-support-redux
 PYTEST=pytest
@@ -38,8 +38,11 @@ lib: venv/bin/activate
 test:
 	"$(PYTEST)" --cov="$(PROJECT_SHORT)" tests -v
 
+version:
+	@ECHO $(VERSION)
+
 package: lib
-	./package-for-anki.sh
+	./package-for-anki.sh $(VERSION)
 
 prep:
 	rm -f $(PROJECT_LONG)-v*.zip

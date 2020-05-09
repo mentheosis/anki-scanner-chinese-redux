@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 exclusions=('./__pycache__' './models' './orig_lib' './templates' './config_saved.json')
-zipfilename='chinese-text-scanner-0-3-0.zip'
+zipfilename="chinese-text-scanner-$1.zip"
 rm $zipfilename
 cd ./chinese
 for i in ./*; do
