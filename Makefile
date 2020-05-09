@@ -1,9 +1,9 @@
-# Copyright 2017-2018 Joseph Lorimer <joseph@lorimer.me>
-#
 # Useful commands:
-#  make version | Display version of the package (from chinese/_version.py)
-#  make build   | Create new zip file, puts it in build/
-#  make test    | Runs tests
+#   make test    | Runs tests
+#   make build   | Fetches packages
+#   make version | Display version of the package (from chinese/_version.py)
+#   make package | Builds everything, drops a new zip file in build/ dir
+
 
 export PYTHONPATH=.
 PYTHON3_VERSION=$(shell python3 -c "import sys;t='{v[0]}.{v[1]}'.format(v=list(sys.version_info[:2]));sys.stdout.write(t)")
@@ -16,7 +16,7 @@ test:
 version:
 	@ECHO $(VERSION)
 
-build: clean lib
+package: build
 	./package-for-anki.sh $(VERSION)
 
 clean:
@@ -27,18 +27,17 @@ clean:
 	find . -name .ropeproject -type d -exec rm -rf {} +
 	find . -name __pycache__ -type d -exec rm -rf {} +
 
-lib: venv/bin/activate
+build: clean venv/bin/activate
 	rm -fr chinese/lib
 	mkdir chinese/lib
 	cp -R virtual_env/lib/python$(PYTHON3_VERSION)/site-packages/. chinese/lib/
 	cp LICENSE "chinese/LICENSE.txt"
 
-
-venv/bin/activate: requirements-to-freeze.txt
+venv/bin/activate: requirements-minimal.txt
 	rm -rf virtual_env/
 	python3 -m venv virtual_env
 	. virtual_env/bin/activate ;\
 	pip install --upgrade pip ;\
-	pip install -Ur requirements-to-freeze.txt ;\
+	pip install -Ur requirements-minimal.txt ;\
 	pip freeze | sort > requirements.txt
-	touch virtual_env/bin/activate  # update so it's as new as requirements-to-freeze.txt
+	touch virtual_env/bin/activate  # update so it's as new as requirements-minimal.txt
