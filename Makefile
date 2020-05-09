@@ -32,6 +32,7 @@ build: clean venv/bin/activate
 	mkdir chinese/lib
 	cp -R virtual_env/lib/python$(PYTHON3_VERSION)/site-packages/. chinese/lib/
 	cp LICENSE "chinese/LICENSE.txt"
+	git checkout chinese/data/db/chinese.db
 
 venv/bin/activate: requirements-minimal.txt
 	rm -rf virtual_env/
