@@ -15,4 +15,5 @@ for i in ./*; do
         zip -r "../${zipfilename}" $i -x "*.mp3" -x "*__pycache__*"
     fi
 done
+mv ../$zipfilename ../build/$zipfilename
 echo "done"
