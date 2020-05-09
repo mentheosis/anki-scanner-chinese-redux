@@ -56,8 +56,7 @@ class TextScannerThreadAsync(QtCore.QThread):
         if self.run_mode == 'scan':
             dictionary = Dictionary()
             # worker thread needs its own dictionry, so cant use singleton here
-            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
-            sc = TextScanner(dictionary, joined_db_path, self.anki_db_field_indices, self.anki_tags_to_exclude, self.sig, self)
+            sc = TextScanner(dictionary, self.anki_db_path, self.anki_db_field_indices, self.anki_tags_to_exclude, self.sig, self)
             self.new_char_words, self.new_words, self.new_chars = sc.scan_and_print(self.file_to_scan, self.file_or_dir, self.input_encoding, self.scan_mode)
             dictionary.conn.close()
 
@@ -77,16 +76,14 @@ class TextScannerThreadAsync(QtCore.QThread):
 
         elif self.run_mode == 'get_existing_note_types':
             dictionary = Dictionary()
-            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
-            nm = NoteMaker(dictionary, None, joined_db_path, None, None, self.sig, self)
+            nm = NoteMaker(dictionary, None, self.anki_db_path, None, None, self.sig, self)
             self.note_models = nm.get_anki_note_models()
             #nm.display_existing_node_models()
             self.nm_fields = nm.generated_fields
 
         elif self.run_mode == 'make_notes':
             dictionary = Dictionary()
-            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
-            nm = NoteMaker(dictionary, self.media_dir_path, joined_db_path, self.target_note_type, self.note_target_maps, self.sig, self)
+            nm = NoteMaker(dictionary, self.media_dir_path, self.anki_db_path, self.target_note_type, self.note_target_maps, self.sig, self)
 
             if self.include_sound == 'true' or self.include_sound == 'True':
                 include_sound = True
@@ -102,7 +99,10 @@ class TextScannerThreadAsync(QtCore.QThread):
 
             self.sig.emit(f"\nPreparing to make {len(new_notes)} new notes")
             package = nm.make_notes(new_notes, self.tag_for_new_cards, self.output_path, self.tag_for_new_cards, include_sound)
-            self.NotePackageSig.emit(package)
+            if package != None:
+                self.NotePackageSig.emit(package)
+            else:
+                self.sig.emit("\nCould not create anki package")
 
             if self.interrupt_and_quit == False:
                 self.sig.emit("\nThanks for using the scanner!")
@@ -113,8 +113,7 @@ class TextScannerThreadAsync(QtCore.QThread):
         elif self.run_mode == 'query_db':
             # worker thread needs its own dictionry, so cant use singleton here
             dictionary = Dictionary()
-            joined_db_path = join(dirname(realpath(__file__)),self.anki_db_path)
-            sc = TextScanner(dictionary, joined_db_path, [], [], self.sig, self)
+            sc = TextScanner(dictionary, self.anki_db_path, [], [], self.sig, self)
             sc.query_db(self.query)
             dictionary.conn.close()
 
