@@ -30,7 +30,7 @@ class ChineseNote:
 sentence_delimiters = "[。，！？><]"
 
 class TextScanner:
-    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0], tags_to_exclude=[], emitter=None, thread_obj=None):
+    def __init__(self, dictionary, anki_db_file_path, anki_note_indices = [0,1], tags_to_exclude=[], emitter=None, thread_obj=None):
         self.dictionary = dictionary
         self.anki_db_file_path = anki_db_file_path
         self.anki_note_indices = anki_note_indices
@@ -62,6 +62,16 @@ class TextScanner:
                         definition += "<br><br>"+char+"<br>"+char_lookup[0][1]
         return definition
 
+    def word_has_new_char(self, word):
+        if hasattr(self,'anki_chars'):
+            for char in word:
+                if self.anki_chars.get(char) == None:
+                    return True
+            return False
+        else:
+            # if we haven't loaded the anki_chars, then consider the word new
+            return True
+
     ## because jieba sometimes parses words that are not found in our dictionary,
     # we need to be careful not to throw away words and charactes from text
     # just because our dictionary doesnt have an entry.
@@ -81,9 +91,14 @@ class TextScanner:
                 trad = self.dictionary._get_word(word,"trad")
             else:
                 # in this case the Jieba dictionary found a word that our dictionary doesn't know
-                # we'll at least get the pinyin and below get the per-character definition.
-                simp = word
-                trad = word
+                # we'll check if it contains new characters, and if so at least get the pinyin and below get the per-character definition.
+                if self.word_has_new_char(word):
+                    simp = word
+                    trad = word
+                else:
+                    # in this case, the dictionary didnt know the word, and it had no new characters, so its probably
+                    # a trivial combination, a common proper noun, or some junk that jieba got wrong
+                    return None, None
             return simp, trad
         else:
             return None, None
@@ -91,12 +106,15 @@ class TextScanner:
     def parse_sentences_with_jieba(self, sentences):
         jieba_words = {}
         i = 0
+        self.printOrLog(f"Total sentences delimited by '{sentence_delimiters}': {len(sentences)}")
+        total_words = 0
         for text in sentences:
             if self.thread_obj != None and self.thread_obj.interrupt_and_quit == True:
                 break
             #cut_all=False means "accurate mode" https://github.com/fxsjy/jieba
             seg_list = jieba.cut(text, cut_all=False)
             for word in seg_list:
+                total_words += 1
                 simp, trad = self.try_get_word_basics(word)
                 if simp != None:
                     i += 1
@@ -107,6 +125,7 @@ class TextScanner:
                     else:
                         jieba_words[simp].incrCount()
 
+        self.printOrLog(f"Total words: {total_words}")
         return jieba_words
 
     #param rel_path: relative path to unzipped epub director containing a bunch of xhtml
@@ -148,7 +167,10 @@ class TextScanner:
 
     ## just a debugging method to explore anki file
     def query_db(self, query):
-        self.newDbClient.query_db(query)
+        if query[0:9] == 'show tag ':
+            self.newDbClient.show_words_with_tag(query, self.dictionary, self.anki_note_indices)
+        else:
+            self.newDbClient.query_db(query)
 
 
     '''
@@ -187,7 +209,9 @@ class TextScanner:
                     if simp != None and already_have_words.get(simp) == None:
                         pinyin = self.dictionary.get_pinyin(simp,'simp')
                         already_have_words[simp] = ChineseNote(word,simp,trad,pinyin)
-        return already_have_words
+        self.anki_words = already_have_words
+        self.anki_chars = self.parse_chars_from_dict(self.anki_words)
+        return self.anki_words
 
     ##############################
     ### De-duping comparison set functions
@@ -226,6 +250,7 @@ class TextScanner:
                         char_dict[simp].incrCount(dict[word].count)
         return char_dict
 
+
     # only return the subset of words that have a char from chars
     def get_words_using_chars(self, words, chars):
         new_char_words = {}
@@ -250,7 +275,7 @@ class TextScanner:
         #self.printOrLog("\noverlap words:", overlap.keys())
 
     def scan_and_compare(self, text_path, file_or_dir="file", encoding="utf-8"):
-        anki_words = self.load_words_from_anki_notes()
+        self.load_words_from_anki_notes()
 
         if file_or_dir == "dir":
             scanned_words = self.parse_unzipped_epub_to_dict(text_path, encoding)
@@ -259,13 +284,12 @@ class TextScanner:
         else:
             scanned_words = self.parse_single_file_to_dict(text_path, encoding)
 
-        left_diff, intersect = self.get_leftdiff_and_intersect(scanned_words, anki_words)
+        left_diff, intersect = self.get_leftdiff_and_intersect(scanned_words, self.anki_words)
 
-        anki_chars = self.parse_chars_from_dict(anki_words)
         scanned_chars = self.parse_chars_from_dict(scanned_words)
-        char_diff, char_intersect = self.get_leftdiff_and_intersect(scanned_chars, anki_chars)
+        char_diff, char_intersect = self.get_leftdiff_and_intersect(scanned_chars, self.anki_chars)
 
-        return scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect
+        return scanned_words, self.anki_words, left_diff, intersect, scanned_chars, self.anki_chars, char_diff, char_intersect
 
     def scan_and_print(self, text_path, file_or_dir="file", encoding="utf-8", scan_mode="new_char_words"):
         scanned_words, anki_words, left_diff, intersect, scanned_chars, anki_chars, char_diff, char_intersect = self.scan_and_compare(
@@ -274,8 +298,10 @@ class TextScanner:
         )
 
         self.printOrLog(f"Scanning:\n{text_path}")
-        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "word")
-        self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "char")
+        def printAll():
+            self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_words, anki_words, left_diff, intersect, "word")
+            self.print_comparison_stats(text_path,self.anki_db_file_path, scanned_chars, anki_chars, char_diff, char_intersect, "char")
+        printAll()
         new_char_words = self.get_words_using_chars(left_diff,char_diff)
         self.printOrLog(f"{len(new_char_words)} words using new chars")
 
@@ -292,4 +318,4 @@ class TextScanner:
             if len(new_char_words) >=12:
                 self.printOrLog(f"Random new word: {str(list(new_char_words.values())[12])}")
 
-        return new_char_words, left_diff, char_diff
+        return new_char_words, left_diff, char_diff, printAll

@@ -57,7 +57,7 @@ class TextScannerThreadAsync(QtCore.QThread):
             dictionary = Dictionary()
             # worker thread needs its own dictionry, so cant use singleton here
             sc = TextScanner(dictionary, self.anki_db_path, self.anki_db_field_indices, self.anki_tags_to_exclude, self.sig, self)
-            self.new_char_words, self.new_words, self.new_chars = sc.scan_and_print(self.file_to_scan, self.file_or_dir, self.input_encoding, self.scan_mode)
+            self.new_char_words, self.new_words, self.new_chars, self.printSummary = sc.scan_and_print(self.file_to_scan, self.file_or_dir, self.input_encoding, self.scan_mode)
             dictionary.conn.close()
 
         elif self.run_mode == 'print':
@@ -73,6 +73,7 @@ class TextScannerThreadAsync(QtCore.QThread):
                 item = to_print[note]
                 self.sig.emit(f"\nSimplified: {item.simplified}, Traditional: {item.traditional}, Pinyin: {item.pinyin}\nDefinition: {item.definition}\nIndex: {i}, First appearance: {item.sort_order}, Count: {item.count}\nSentence: {item.sentence}")
                 i += 1
+            self.printSummary()
 
         elif self.run_mode == 'get_existing_note_types':
             dictionary = Dictionary()
@@ -113,7 +114,7 @@ class TextScannerThreadAsync(QtCore.QThread):
         elif self.run_mode == 'query_db':
             # worker thread needs its own dictionry, so cant use singleton here
             dictionary = Dictionary()
-            sc = TextScanner(dictionary, self.anki_db_path, [], [], self.sig, self)
+            sc = TextScanner(dictionary, self.anki_db_path, [0,1], [], self.sig, self)
             sc.query_db(self.query)
             dictionary.conn.close()
 
