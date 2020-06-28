@@ -30,7 +30,6 @@ from .mr_ui_scanner import showTextScanner
 from .mr_ui_note_config import showConfigNoteTypes
 from .singletons import config
 
-
 SPEECH_ENGINES = {
     'Baidu Translate': 'baidu|zh',
     'Google Mandarin (PRC)': 'google|zh-cn',
@@ -56,10 +55,10 @@ def load_menu():
     add_menu(menu_text)
     add_menu_item(menu_text, _('Scan file'), lambda:showTextScanner("file"))
     add_menu_item(menu_text, _('Scan pasted text'), lambda:showTextScanner("clipboard"))
-    add_menu_item(menu_text, _('Configure target note type'), lambda:showConfigNoteTypes())
+    add_menu_item(menu_text, _('Set up target note type'), lambda:showConfigNoteTypes())
     if dev_mode == True:
         add_menu_item(menu_text, _('Query anki db'), lambda:showTextScanner("dev"))
-    add_menu_item(menu_text, _('About this addon'), showAbout)
+    add_menu_item(menu_text, _('关于'), showAbout)
 
     '''
     for k, v in SPEECH_ENGINES.items():
