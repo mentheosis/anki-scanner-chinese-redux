@@ -16,7 +16,10 @@ test:
 version:
 	@ECHO $(VERSION)
 
-package: build
+buildpack: build
+	./package-for-anki.sh $(VERSION)
+
+package:
 	./package-for-anki.sh $(VERSION)
 
 clean:
