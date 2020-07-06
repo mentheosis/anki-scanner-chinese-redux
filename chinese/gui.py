@@ -63,6 +63,7 @@ def load_menu():
     add_menu(menu_text)
     add_menu_item(menu_text, _('Scan file'), lambda:showTextScanner("file"))
     add_menu_item(menu_text, _('Scan pasted text'), lambda:showTextScanner("clipboard"))
+    add_menu_item(menu_text, _('Reader mode',), lambda:showTextScanner("reader"))
     add_menu_item(menu_text, _('Set up target note type'), lambda:showConfigNoteTypes())
     if dev_mode == True:
         add_menu_item(menu_text, _('Query anki db'), lambda:showTextScanner("dev"))

@@ -7,6 +7,7 @@ from PyQt5 import QtCore, QtWidgets
 import traceback
 from .mr_async_worker_thread import TextScannerThreadAsync
 from .singletons import config
+from . import mr_text_reader
 
 
 # class that we will use to generate all our UI windows
@@ -53,6 +54,11 @@ def gatherControls(config, ui_mode="file"):
         'include_sound':'''<br><span><b>Include sound files:</b><br>If this is true, the scanner will
                 download sound files of the word readings and include them as media in the generated notes.</span>'''
     }
+    if ui_mode == "reader":
+        ui_inputs = {
+            'file_to_scan': 'Text to readed',
+            'missed_words': 'Missed words'
+        }
 
     hidden_cfg = {}
     for item in config_inputs:
@@ -112,7 +118,7 @@ def gatherControls(config, ui_mode="file"):
                 b2.toggled.connect(lambda:interpretRadioBtn(b2, scan_input))
                 b3.toggled.connect(lambda:interpretRadioBtn(b3, scan_input))
                 controls.append({"key":ipt, "label":label, "input":scan_input})
-            elif ipt == 'file_to_scan' and ui_mode == 'clipboard':
+            elif ipt == 'file_to_scan' and (ui_mode == 'clipboard' or ui_mode == 'reader'):
                 clipboard_input = QPlainTextEdit()
                 label.setText("<span><b>Input text:</b></span>")
                 controls.append({"key":ipt, "label":label, "input":clipboard_input})
@@ -137,6 +143,10 @@ def gatherControls(config, ui_mode="file"):
                 sb1.toggled.connect(lambda:interpretRadioBtn(sb1, sound_input))
                 sb2.toggled.connect(lambda:interpretRadioBtn(sb2, sound_input))
                 controls.append({"key":ipt, "label":label, "input":sound_input})
+            elif ipt == 'missed_words':
+                input = QLineEdit()
+                input.setText(default)
+                controls.append({"key":ipt, "label":label, "input":input})
             else:
                 input = QLineEdit()
                 input.setText(default)
@@ -256,9 +266,12 @@ def showTextScanner(ui_mode="file"):
             elif control['key'] == "include_sound":
                 ui_inputs[control['key']] = control['input']["mode"]
                 config.config['textScanner'][control['key']]['val'] = control['input']['mode']
-            elif control['key'] == 'file_to_scan' and ui_mode == 'clipboard':
+            elif control['key'] == 'file_to_scan' and (ui_mode == 'clipboard' or ui_mode == 'reader'):
                 # dont save user input as config in this case
                 ui_inputs[control['key']] = control['input'].toPlainText()
+            elif control['key'] == 'missed_words' and ui_mode == 'reader':
+                # dont save user input as config in this case
+                ui_inputs[control['key']] = control['input'].text()
             elif control['key'] == 'anki_tags_to_exclude':
                 ui_inputs['anki_tags_to_exclude'] = control['input'].text().replace(" ","")
                 config.config['textScanner'][control['key']]['val'] = control['input'].text()
@@ -292,6 +305,25 @@ def showTextScanner(ui_mode="file"):
     mw.mr_worker.finished.connect(resetButton)
 
     # dev mode sqlite query
+    def finishReader():
+        outputText.setText("Howdy folks")
+        ui_inputs = gather_ui_inputs();
+        text = ui_inputs['file_to_scan']
+        missedWords = ui_inputs['missed_words']
+        tr = mr_text_reader.TextReader(text, missedWords);
+        (learnedCount, missedCount) = tr.answerCards()
+        outputText.setText("Learned: " + str(learnedCount) + "Missed: " + str(missedCount))
+
+    def runReader():
+        outputText.setText("Howdy folks")
+        ui_inputs = gather_ui_inputs();
+        text = ui_inputs['file_to_scan']
+        missedWords = ui_inputs['missed_words']
+        tr = mr_text_reader.TextReader(text, missedWords);
+        noteBtn.setEnabled(True)
+        outputText.setText(tr.printReport())
+
+
     def runQuery():
         outputText.setText("")
         ui_inputs = gather_ui_inputs()
@@ -397,6 +429,9 @@ def showTextScanner(ui_mode="file"):
     if ui_mode == "dev":
         queryBtn.setStyleSheet("background-color: #8DE1DD")
         queryBtn.clicked.connect(runQuery)
+    elif ui_mode == "reader":
+        scanBtn.clicked.connect(runReader)
+        noteBtn.clicked.connect(finishReader)
     else:
         scanBtn.clicked.connect(runScanner)
         scanBtn.setStyleSheet("background-color: #8DE1DD")
