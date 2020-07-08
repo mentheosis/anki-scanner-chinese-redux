@@ -161,6 +161,8 @@ def gatherControls(config, ui_mode="file"):
 ##
 def showTextScanner(ui_mode="file"):
     mw.mr_worker = TextScannerThreadAsync()
+    global mrtr
+    mrtr = None
 
     outerLayout = QVBoxLayout()
     colLayout = QHBoxLayout()
@@ -306,22 +308,21 @@ def showTextScanner(ui_mode="file"):
 
     # dev mode sqlite query
     def finishReader():
-        outputText.setText("Howdy folks")
-        ui_inputs = gather_ui_inputs();
-        text = ui_inputs['file_to_scan']
-        missedWords = ui_inputs['missed_words']
-        tr = mr_text_reader.TextReader(text, missedWords);
-        (learnedCount, missedCount) = tr.answerCards()
+        global mrtr
+
+        (learnedCount, missedCount) = mrtr.answerCards()
         outputText.setText("Learned: " + str(learnedCount) + "Missed: " + str(missedCount))
 
     def runReader():
+        global mrtr
+
         outputText.setText("Howdy folks")
         ui_inputs = gather_ui_inputs();
         text = ui_inputs['file_to_scan']
         missedWords = ui_inputs['missed_words']
-        tr = mr_text_reader.TextReader(text, missedWords);
+        mrtr = mr_text_reader.TextReader(text, missedWords);
         noteBtn.setEnabled(True)
-        outputText.setText(tr.printReport())
+        outputText.setText(mrtr.printReport())
 
 
     def runQuery():

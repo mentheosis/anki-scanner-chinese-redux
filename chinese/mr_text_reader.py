@@ -37,7 +37,7 @@ class TextReader:
             learnedCount = learnedCount + 1
             card.timerStarted = time.time()
             card.queue = 2
-            mw.col.sched.answerCard(card, 2)
+            mw.col.sched.answerCard(card, 3)
         for card in self.missedWords:
             missedCount = missedCount + 1
             card.timerStarted = time.time()
