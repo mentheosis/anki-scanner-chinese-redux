@@ -25,6 +25,14 @@ from aqt import mw
 from aqt.utils import openLink
 
 from .about import CSR_GITHUB_URL, showAbout
+from .fill import (
+    bulk_fill_classifiers,
+    bulk_fill_defs,
+    bulk_fill_hanzi,
+    bulk_fill_transcript,
+    bulk_fill_silhouette,
+    bulk_fill_sound,
+)
 
 from .mr_ui_scanner import showTextScanner
 from .mr_ui_note_config import showConfigNoteTypes
@@ -60,35 +68,37 @@ def load_menu():
         add_menu_item(menu_text, _('Query anki db'), lambda:showTextScanner("dev"))
     add_menu_item(menu_text, _('关于'), showAbout)
 
+    if dev_mode == True:
+
+        for k, v in SPEECH_ENGINES.items():
+            add_menu_item(
+                f"{menu_text}::Speech Engine",
+                k,
+                partial(config.update, {'speech': v}),
+                checkable=True,
+                checked=bool(config['speech'] == v),
+            )
+
+        for k, v in PHONETIC_TARGETS.items():
+            add_menu_item(
+                f"{menu_text}::Phonetics",
+                k,
+                partial(config.update, {'target': v}),
+                checkable=True,
+                checked=bool(config['target'] == v),
+            )
+
+        add_menu(f"{menu_text}::Bulk Fill")
+        add_menu_item(f"{menu_text}::Bulk Fill", _('Hanzi'), bulk_fill_hanzi)
+        add_menu_item(
+            f"{menu_text}::Bulk Fill", _('Transcription'), bulk_fill_transcript
+        )
+        add_menu_item(f"{menu_text}::Bulk Fill", _('Definitions'), bulk_fill_defs)
+        add_menu_item(f"{menu_text}::Bulk Fill", _('Classifiers'), bulk_fill_classifiers)
+        add_menu_item(f"{menu_text}::Bulk Fill", _('Sound'), bulk_fill_sound)
+        add_menu_item(f"{menu_text}::Bulk Fill", _('Silhouette'), bulk_fill_silhouette)
+
     '''
-    for k, v in SPEECH_ENGINES.items():
-        add_menu_item(
-            'TextScan扫描::Speech Engine',
-            k,
-            partial(config.update, {'speech': v}),
-            checkable=True,
-            checked=bool(config['speech'] == v),
-        )
-
-    for k, v in PHONETIC_TARGETS.items():
-        add_menu_item(
-            'MatterRabbit::Phonetics',
-            k,
-            partial(config.update, {'target': v}),
-            checkable=True,
-            checked=bool(config['target'] == v),
-        )
-
-    add_menu('MatterRabbit::Bulk Fill')
-    add_menu_item('MatterRabbit::Bulk Fill', _('Hanzi'), bulk_fill_hanzi)
-    add_menu_item(
-        'MatterRabbit::Bulk Fill', _('Transcription'), bulk_fill_transcript
-    )
-    add_menu_item('MatterRabbit::Bulk Fill', _('Definitions'), bulk_fill_defs)
-    add_menu_item('MatterRabbit::Bulk Fill', _('Classifiers'), bulk_fill_classifiers)
-    add_menu_item('MatterRabbit::Bulk Fill', _('Sound'), bulk_fill_sound)
-    add_menu_item('MatterRabbit::Bulk Fill', _('Silhouette'), bulk_fill_silhouette)
-
     add_menu('MatterRabbit::Help')
     add_menu_item(
         'MatterRabbit::Help',

@@ -22,6 +22,7 @@ from aqt import mw
 
 from .singletons import dictionary, config
 from .gui import load_menu, unload_menu
+from .edit import EditManager
 
 import jieba
 jieba.setLogLevel(20)
@@ -30,8 +31,14 @@ if config['firstRun']:
     dictionary.create_indices()
     config['firstRun'] = False
 
+dev_mode = False
+if config['textScanner']['dev_mode']['val'] == True:
+    dev_mode = True
+
 def load():
     addHook('profileLoaded', load_menu)
     addHook('unloadProfile', config.save)
     addHook('unloadProfile', dictionary.conn.close)
     addHook('unloadProfile', unload_menu)
+    if dev_mode == True:
+        EditManager()
