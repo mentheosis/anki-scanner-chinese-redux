@@ -1,24 +1,13 @@
 ###################
 ## UI screens
 from aqt import mw
-from PyQt5.QtWidgets import QMainWindow, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
+from PyQt5.QtWidgets import QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
 import traceback
 from .mr_async_worker_thread import TextScannerThreadAsync
+from .mr_window import MatterRabbitWindow
 from .singletons import config
-
-
-# class that we will use to generate all our UI windows
-class MatterRabbitWindow(QMainWindow):
-    def __init__(self, contentLayout, onCloseFn, parent=None):
-        super(MatterRabbitWindow, self).__init__(parent)
-        self.onCloseFn = onCloseFn
-        self.setCentralWidget(QWidget(self))
-        self.centralWidget().setLayout(contentLayout)
-
-    def closeEvent(self, evnt):
-        self.onCloseFn()
 
 
 ##########################################################
@@ -356,6 +345,9 @@ def showTextScanner(ui_mode="file"):
         mw.mr_worker.setMode('print')
         mw.mr_worker.start()
 
+    def test():
+        outputText.append("sdfsdfsdfssd!")
+
     def makeNotes():
         outputText.setText("")
         cancelBtn.setEnabled(True)
@@ -398,7 +390,8 @@ def showTextScanner(ui_mode="file"):
         queryBtn.setStyleSheet("background-color: #8DE1DD")
         queryBtn.clicked.connect(runQuery)
     else:
-        scanBtn.clicked.connect(runScanner)
+        #scanBtn.clicked.connect(runScanner)
+        scanBtn.clicked.connect(test)
         scanBtn.setStyleSheet("background-color: #8DE1DD")
         printBtn.clicked.connect(printWords)
         noteBtn.clicked.connect(makeNotes)

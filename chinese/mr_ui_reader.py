@@ -5,7 +5,7 @@ from PyQt5 import QtCore, QtWidgets
 
 from .mr_async_worker_thread import TextScannerThreadAsync
 from .singletons import config
-from .mr_ui_scanner import MatterRabbitWindow
+from .mr_window import MatterRabbitWindow
 
 
 ##########################################################
@@ -17,9 +17,10 @@ def showReader():
 
     outputText = QTextBrowser()
     def log(message, level=None):
+        localLevel = level
         if level == None:
-            level = 'debug'
-        if dev_mode == True or level != 'debug':
+            localLevel = 'debug'
+        if dev_mode == True or localLevel != 'debug':
             outputText.append(message)
 
     outerLayout = QVBoxLayout()
@@ -78,37 +79,39 @@ def showReader():
         text = ui_inputs['read_text']
         missedWords = ui_inputs['missed_words']
 
-        mw.mr_worker.setReaderInputs(text, missedWords)
-        mw.mr_worker.setMode('reader')
-        mw.mr_worker.run()
+        mw.reader_worker.setReaderInputs(text, missedWords)
+        mw.reader_worker.setMode('reader')
+        mw.reader_worker.run()
 
     def finishReader():
-        (learnedCount, missedCount) = mrtr.answerCards()
-        outputText.setText("Learned: " + str(learnedCount) + "Missed: " + str(missedCount))
+        #(learnedCount, missedCount) = mrtr.answerCards()
+        #log("Learned: " + str(learnedCount) + "Missed: " + str(missedCount), 'info')
+        log("Click!!")
+        outputText.append("clicksfdfsd")
 
     def onReaderFinished():
+        log("Nicerr!")
+        log("Nice!", 'info')
         noteBtn.setEnabled(True)
 
 
     def updateTextOutputFromThread(text):
-        if mw.mr_worker.exiting == False:
-            log(text)
+        if mw.reader_worker.exiting == False:
+            log(text, "info")
 
-    mw.mr_worker = TextScannerThreadAsync()
-    mw.mr_worker.sig.connect(updateTextOutputFromThread)
-    mw.mr_worker.workDoneSig.connect(onReaderFinished)
-    #mw.mr_worker.finished.connect(onNoteTypesLoaded)
-    #mw.mr_worker.setMode('get_existing_note_types')
-    # mw.mr_worker.start()
-    log("Hey log",'info')
+    if not hasattr(mw, 'reader_worker'):
+        mw.reader_worker = TextScannerThreadAsync()
+    mw.reader_worker.sig.connect(updateTextOutputFromThread)
+    mw.reader_worker.finished.connect(onReaderFinished)
+    log("Welcome to the reader",'info')
 
     def onCancel():
-        if hasattr(mw,'mr_worker'):
-            mw.mr_worker.interrupt_and_quit = True
-            mw.mr_worker.sig.emit("told worker to quit..")
+        if hasattr(mw,'reader_worker'):
+            mw.reader_worker.interrupt_and_quit = True
+            mw.reader_worker.sig.emit("told worker to quit..")
 
     def onDialogClose():
-        mw.mr_worker.exiting = True
+        mw.reader_worker.exiting = True
         onCancel()
 
 
@@ -116,7 +119,7 @@ def showReader():
     cancelBtn = QPushButton('Stop everything!')
     cancelBtn.setEnabled(False)
     noteBtn = QPushButton('Update my cards')
-    noteBtn.setEnabled(False)
+    #noteBtn.setEnabled(False)
 
     scanButtonLayout = QHBoxLayout()
     scanButtonLayout.addWidget(scanBtn)
@@ -132,16 +135,6 @@ def showReader():
     colLayout.addLayout(leftLayout)
     colLayout.addLayout(rightLayout)
     outerLayout.addLayout(colLayout)
-
-    #leftContainer = QWidget()
-    #leftContainer.setFixedWidth(450)
-    #leftContainer.setLayout(leftLayout)
-    #rightContainer = QWidget()
-    #rightContainer.setFixedWidth(450)
-    #rightContainer.setLayout(rightLayout)
-    #colLayout.addWidget(leftContainer)
-    #colLayout.addWidget(rightContainer)
-    #outerLayout.addLayout(colLayout)
 
     dialog = MatterRabbitWindow(outerLayout, onDialogClose, mw)
     dialog.resize(950,700)
