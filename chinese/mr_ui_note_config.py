@@ -193,6 +193,7 @@ def showConfigNoteTypes():
     cntColLayout.addWidget(rightContainer)
     cntOuterLayout.addLayout(cntColLayout)
     cntOuterLayout.addWidget(outputText)
+
     dialog = MatterRabbitWindow(cntOuterLayout, onDialogClose, mw)
     dialog.resize(950,700)
     dialog.setWindowTitle('Chinese Text Scanner - Config Note Types')

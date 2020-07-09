@@ -3,11 +3,13 @@ from .mr_text_scanner import TextScanner
 from .mr_note_maker import NoteMaker
 from .database import Dictionary
 from os.path import dirname, join, realpath
+from .mr_text_reader import TextReader
 import genanki
 
 class TextScannerThreadAsync(QtCore.QThread):
     sig = QtCore.pyqtSignal(str)
     NotePackageSig = QtCore.pyqtSignal(genanki.Package)
+    workDoneSig = QtCore.pyqtSignal(str)
 
     def __init__(self):
         super().__init__()
@@ -15,6 +17,7 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.interrupt_and_quit = False
         self.exiting = False
         self.run_mode = "scan"
+        self.reader = TextReader(self.sig.emit);
 
     def refresh_query(self, anki_db_path, query):
         self.anki_db_path = anki_db_path
@@ -47,6 +50,10 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.target_note_type = target_note_type
         self.note_target_maps = note_target_maps
         self.scan_mode = scan_mode
+
+    def setReaderInputs(self, text, missedWords):
+        self.readerText = text
+        self.readerMissedWords = missedWords
 
     def setMode(self,mode):
         self.interrupt_and_quit = False
@@ -117,6 +124,14 @@ class TextScannerThreadAsync(QtCore.QThread):
             sc = TextScanner(dictionary, self.anki_db_path, [0,1], [], self.sig, self)
             sc.query_db(self.query)
             dictionary.conn.close()
+
+        elif self.run_mode == 'reader':
+            self.sig.emit("Howdy folks")
+            self.reader.readText(self.readerText, self.readerMissedWords)
+            self.sig.emit(self.reader.printReport())
+            self.workDoneSig.emit("reader done")
+            self.sig.emit("done reading")
+
 
         else:
             self.sig.emit(f"Worker thread has nothing to do for mode {self.run_mode}...")

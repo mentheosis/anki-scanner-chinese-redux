@@ -9,26 +9,41 @@ class TextReader:
             if not item in deduped:
                 deduped.append(item)
         return deduped
-    def __init__(self, textRead, missedWords):
+
+    def __init__(self, logFn=None):
+        self.log = logFn
+
+    '''
+        text is meant to be something that the user has just finished reading.
+        missed words is the csv list of words that they had to look up while reading.
+        any words parsed from the text that arent in the missed list will be counted as a successful flashcard answer
+    '''
+    def readText(self, text, missedWords):
         missedWords = missedWords.split(",")
         missedIds = []
         for word in missedWords:
             missedIds.extend(self.findIdsForHanzi(word))
+        self.log("Reader finished finding ids for missedWords")
         missedIds = self.dedupe(missedIds)
 
-        learnedWordsRaw = jieba.cut(textRead, cut_all=False)
+        learnedWordsRaw = jieba.cut(text, cut_all=False)
         learnedIds = []
         for word in learnedWordsRaw:
             ids = self.findIdsForHanzi(word)
             ids = [id for id in ids if id not in missedIds]
             learnedIds.extend(ids)
         learnedIds = self.dedupe(learnedIds)
+        self.log("Reader finished finding ids for learnedWordsRaw")
+
         self.learnedWords = []
         for id in learnedIds:
             self.learnedWords.append(mw.col.getCard(id))
+        self.log("Reader finished learnedWords loop")
+
         self.missedWords = []
         for id in missedIds:
             self.missedWords.append(mw.col.getCard(id));
+        self.log("Reader finished missedWords loops")
 
     def answerCards(self):
         learnedCount = 0
@@ -76,5 +91,3 @@ class TextReader:
 
     def findIdsWithTag(self, hanzi, tag):
         return mw.col.findCards(tag+":"+hanzi)
-
-
