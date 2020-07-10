@@ -37,7 +37,6 @@ from .fill import (
 from .mr_ui_scanner import showTextScanner
 from .mr_ui_note_config import showConfigNoteTypes
 from .mr_ui_reader import showReader
-from .mr_test import showTest
 from .singletons import config
 
 SPEECH_ENGINES = {
@@ -66,7 +65,6 @@ def load_menu():
     add_menu_item(menu_text, _('Scan file'), lambda:showTextScanner("file"))
     add_menu_item(menu_text, _('Scan pasted text'), lambda:showTextScanner("clipboard"))
     add_menu_item(menu_text, _('Reader mode',), lambda:showReader())
-    add_menu_item(menu_text, _('Teset mode',), lambda:showTest())
     add_menu_item(menu_text, _('Set up target note type'), lambda:showConfigNoteTypes())
     if dev_mode == True:
         add_menu_item(menu_text, _('Query anki db'), lambda:showTextScanner("dev"))

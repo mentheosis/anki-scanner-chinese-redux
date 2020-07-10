@@ -1,42 +1,45 @@
 from aqt import mw
-from PyQt5.QtWidgets import QMainWindow, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
-from PyQt5.QtGui import QStandardItem, QColor
+from PyQt5.QtWidgets import QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
 from .mr_async_worker_thread import TextScannerThreadAsync
-from .singletons import config
 from .mr_window import MatterRabbitWindow
+from .singletons import config
 
-
-##########################################################
-# This is the window to configure how notes will be auto-imported
-##
 def showReader():
-
-    dev_mode = config.config['textScanner']['dev_mode']['val']
-
-    outputText = QTextBrowser()
-    def log(message, level=None):
-        localLevel = level
-        if level == None:
-            localLevel = 'debug'
-        if dev_mode == True or localLevel != 'debug':
-            outputText.append(message)
+    mw.reader_worker = TextScannerThreadAsync()
 
     outerLayout = QVBoxLayout()
     colLayout = QHBoxLayout()
     leftLayout = QVBoxLayout()
     rightLayout = QVBoxLayout()
+    outputText = QTextBrowser()
 
-    cntTopLabel = QLabel()
-    cntTopLabel.setWordWrap(True)
-    cntTopLabel.setText('''<div style="font-weight: bold; font-size:24px; width: 5em; text-align:center;">
-        读书吧</div>
-        <div>Welcome to reader mode! Paste the text that you read, and a list of words that you had to look up, and this will update your flashcards accordingly.</div>
-        <br>''')
-    outerLayout.addWidget(cntTopLabel)
-    #outerLayout.addStretch()
+    topLabel = QLabel()
+    topLabel.setWordWrap(True)
+    topLabel.setText('''<div style="font-weight: bold; font-size:24px; width: 5em; text-align:center;">
+        读书吧''')
+    outerLayout.addWidget(topLabel)
 
+    scanButtonLayout = QHBoxLayout()
+
+    scanBtn = QPushButton('Parse the text')
+    cancelBtn = QPushButton('Stop')
+    cancelBtn.setEnabled(False)
+    noteBtn = QPushButton('Update my cards')
+    noteBtn.setEnabled(False)
+
+    scanButtonLayout.addWidget(scanBtn)
+    scanButtonLayout.addWidget(cancelBtn)
+    scanButtonLayout.addWidget(noteBtn)
+
+    rightLayout.addLayout(scanButtonLayout)
+    rightLayout.addWidget(outputText)
+    colLayout.addLayout(leftLayout)
+    colLayout.addLayout(rightLayout)
+    outerLayout.addLayout(colLayout)
+
+    anki_db_path = config['textScanner']['anki_db_path']['val']
 
     ui_inputs = {
         'read_text': 'Text to read',
@@ -72,40 +75,31 @@ def showReader():
                 inputs[control['key']] = control['input'].toPlainText()
             elif control['key'] == 'missed_words':
                 inputs[control['key']] = control['input'].text()
+        return inputs
 
 
     def runReader():
         inputs = gather_ui_inputs();
-        text = ui_inputs['read_text']
-        missedWords = ui_inputs['missed_words']
-
-        mw.reader_worker.setReaderInputs(text, missedWords)
-        mw.reader_worker.setMode('reader')
-        mw.reader_worker.run()
-
-    def finishReader():
-        #(learnedCount, missedCount) = mrtr.answerCards()
-        #log("Learned: " + str(learnedCount) + "Missed: " + str(missedCount), 'info')
-        log("Click!!")
-        outputText.append("clicksfdfsd")
+        text = inputs['read_text']
+        missedWords = inputs['missed_words']
+        mw.reader_worker.runReader(text, missedWords, anki_db_path)
+        cancelBtn.setEnabled(False)
 
     def onReaderFinished():
-        log("Nicerr!")
-        log("Nice!", 'info')
         noteBtn.setEnabled(True)
 
+    def updateCards():
+        mw.reader_worker.runReaderAnswerCards()
+
+    def log(message):
+        outputText.append(message)
 
     def updateTextOutputFromThread(text):
         if mw.reader_worker.exiting == False:
-            log(text, "info")
-
-    if not hasattr(mw, 'reader_worker'):
-        mw.reader_worker = TextScannerThreadAsync()
-    mw.reader_worker.sig.connect(updateTextOutputFromThread)
-    mw.reader_worker.finished.connect(onReaderFinished)
-    log("Welcome to the reader",'info')
+            log(text)
 
     def onCancel():
+        #resetButton()
         if hasattr(mw,'reader_worker'):
             mw.reader_worker.interrupt_and_quit = True
             mw.reader_worker.sig.emit("told worker to quit..")
@@ -114,29 +108,19 @@ def showReader():
         mw.reader_worker.exiting = True
         onCancel()
 
+    mw.reader_worker.sig.connect(updateTextOutputFromThread)
+    mw.reader_worker.finished.connect(onReaderFinished)
 
-    scanBtn = QPushButton('Parse the text!')
-    cancelBtn = QPushButton('Stop everything!')
-    cancelBtn.setEnabled(False)
-    noteBtn = QPushButton('Update my cards')
-    #noteBtn.setEnabled(False)
-
-    scanButtonLayout = QHBoxLayout()
-    scanButtonLayout.addWidget(scanBtn)
-    scanButtonLayout.addWidget(cancelBtn)
-    scanButtonLayout.addWidget(noteBtn)
-
+    scanBtn.setStyleSheet("background-color: #8DE1DD")
     scanBtn.clicked.connect(runReader)
-    noteBtn.clicked.connect(finishReader)
+    # if you dont initialize the stylesheet on the button it seems like things break weirdly, so just do it
+    cancelBtn.setStyleSheet("color: #000")
     cancelBtn.clicked.connect(onCancel)
-
-    rightLayout.addLayout(scanButtonLayout)
-    rightLayout.addWidget(outputText)
-    colLayout.addLayout(leftLayout)
-    colLayout.addLayout(rightLayout)
-    outerLayout.addLayout(colLayout)
+    # if you dont initialize the stylesheet on the button it seems like things break weirdly, so just do it
+    noteBtn.setStyleSheet("color: #000")
+    noteBtn.clicked.connect(updateCards)
 
     dialog = MatterRabbitWindow(outerLayout, onDialogClose, mw)
-    dialog.resize(950,700)
-    dialog.setWindowTitle('Chinese Text Scanner - Reader mode')
+    dialog.resize(900,650)
+    dialog.setWindowTitle('Reader Mode')
     dialog.show()

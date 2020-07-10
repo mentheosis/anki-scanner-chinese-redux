@@ -399,5 +399,8 @@ def showTextScanner(ui_mode="file"):
 
     dialog = MatterRabbitWindow(outerLayout, onDialogClose, mw)
     dialog.resize(900,650)
-    dialog.setWindowTitle('Chinese Text Scanner')
+    if ui_mode == "dev":
+        dialog.setWindowTitle('Query DB')
+    else:
+        dialog.setWindowTitle('Chinese Text Scanner')
     dialog.show()

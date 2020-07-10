@@ -1,14 +1,20 @@
-from aqt import mw
+
+from .mr_anki_db_client import AnkiDbClient
 import jieba
 import time
 
+from aqt import mw
+
 class TextReader:
+
     def dedupe(self, list):
         deduped = []
+        count=0
         for item in list:
+            count += 1
             if not item in deduped:
                 deduped.append(item)
-        return deduped
+        return deduped, count
 
     def __init__(self, logFn=None):
         self.log = logFn
@@ -18,32 +24,31 @@ class TextReader:
         missed words is the csv list of words that they had to look up while reading.
         any words parsed from the text that arent in the missed list will be counted as a successful flashcard answer
     '''
-    def readText(self, text, missedWords):
-        missedWords = missedWords.split(",")
-        missedIds = []
-        for word in missedWords:
-            missedIds.extend(self.findIdsForHanzi(word))
-        self.log("Reader finished finding ids for missedWords")
-        missedIds = self.dedupe(missedIds)
+    def readText(self, text, missedWords, anki_db_file_path):
+        self.log(f"Reader starting")
 
-        learnedWordsRaw = jieba.cut(text, cut_all=False)
-        learnedIds = []
-        for word in learnedWordsRaw:
-            ids = self.findIdsForHanzi(word)
-            ids = [id for id in ids if id not in missedIds]
-            learnedIds.extend(ids)
-        learnedIds = self.dedupe(learnedIds)
-        self.log("Reader finished finding ids for learnedWordsRaw")
+        with AnkiDbClient(anki_db_file_path, self.log) as dbClient:
+            missedWordsRaw, missedCount = self.dedupe(missedWords.split(","))
+            self.missedWords = []
+            missedIds = []
+            if len(missedWordsRaw) > 0:
+                missedIds = dbClient.get_card_ids(missedWordsRaw)
+            if len(missedIds) > 0:
+                self.missedWords = dbClient.get_cards_by_ids(missedIds)
 
-        self.learnedWords = []
-        for id in learnedIds:
-            self.learnedWords.append(mw.col.getCard(id))
-        self.log("Reader finished learnedWords loop")
+            learnedWordsRaw, learnedWordsCount = self.dedupe(jieba.cut(text, cut_all=False))
+            ids = []
+            learnedIds = []
+            self.learnedWords = []
+            if len(learnedWordsRaw) > 0:
+                ids = dbClient.get_card_ids(learnedWordsRaw)
+                learnedIds = [id for id in ids if id not in missedIds]
+            if len(learnedIds) > 0:
+                self.learnedWords = dbClient.get_cards_by_ids(learnedIds)
 
-        self.missedWords = []
-        for id in missedIds:
-            self.missedWords.append(mw.col.getCard(id));
-        self.log("Reader finished missedWords loops")
+        self.log(f"\nTotal input words: {learnedWordsCount} \nDistinct input words: {len(learnedWordsRaw)}")
+        self.log(self.printReportShort())
+        self.log(f"\nFinished reading. Click 'Update my cards' to set responses in the anki scheduler")
 
     def answerCards(self):
         learnedCount = 0
@@ -59,6 +64,14 @@ class TextReader:
             card.queue = 2
             mw.col.sched.answerCard(card, 1)
         return (learnedCount, missedCount)
+
+        return True
+
+
+    def printReportShort(self):
+        outputString = f"Cards to pass: {len(self.learnedWords)}"
+        outputString = outputString + f"\nCards to miss: {len(self.missedWords)}"
+        return outputString
 
     def printReport(self):
         outputString = "learned words: "
@@ -77,17 +90,6 @@ class TextReader:
                 if name == "Hanzi" or name == "Simplified" or name == "Traditional":
                     outputString = outputString + value + ","
             outputString = outputString +"),"
+        outputString = f"\nCards passed: {len(self.learnedWords)}"
+        outputString = outputString + f"\nCards missed: {len(self.missedWords)}"
         return outputString
-
-    def findIdsForHanzi(self, hanzi):
-        ids = self.findIdsWithTag(hanzi, "Hanzi")
-        ids.extend(self.findIdsWithTag(hanzi, "Simplified"))
-        ids.extend(self.findIdsWithTag(hanzi, "Traditional"))
-        dedupedIds = []
-        for id in ids:
-            if not id in dedupedIds:
-                dedupedIds.append(id)
-        return dedupedIds
-
-    def findIdsWithTag(self, hanzi, tag):
-        return mw.col.findCards(tag+":"+hanzi)
