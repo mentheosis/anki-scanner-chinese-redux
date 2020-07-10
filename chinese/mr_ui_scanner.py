@@ -345,9 +345,6 @@ def showTextScanner(ui_mode="file"):
         mw.mr_worker.setMode('print')
         mw.mr_worker.start()
 
-    def test():
-        outputText.append("sdfsdfsdfssd!")
-
     def makeNotes():
         outputText.setText("")
         cancelBtn.setEnabled(True)
@@ -390,8 +387,7 @@ def showTextScanner(ui_mode="file"):
         queryBtn.setStyleSheet("background-color: #8DE1DD")
         queryBtn.clicked.connect(runQuery)
     else:
-        #scanBtn.clicked.connect(runScanner)
-        scanBtn.clicked.connect(test)
+        scanBtn.clicked.connect(runScanner)
         scanBtn.setStyleSheet("background-color: #8DE1DD")
         printBtn.clicked.connect(printWords)
         noteBtn.clicked.connect(makeNotes)
