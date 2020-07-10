@@ -89,7 +89,7 @@ def showReader():
         noteBtn.setEnabled(True)
 
     def updateCards():
-        mw.reader_worker.runReaderAnswerCards()
+        mw.reader_worker.runReaderAnswerCardsSync()
 
     def log(message):
         outputText.append(message)

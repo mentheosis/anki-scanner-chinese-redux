@@ -166,11 +166,11 @@ class TextScanner:
 
     ## just a debugging method to explore anki file
     def query_db(self, query):
-        with AnkiDbClient(anki_db_file_path, self.printOrLog) as newDbClient:
+        with AnkiDbClient(self.anki_db_file_path, self.printOrLog) as newDbClient:
             if query[0:9] == 'show tag ':
-                self.newDbClient.show_words_with_tag(query, self.dictionary, self.anki_note_indices)
+                newDbClient.show_words_with_tag(query, self.dictionary, self.anki_note_indices)
             else:
-                self.newDbClient.query_db(query)
+                newDbClient.query_db(query)
 
 
     '''

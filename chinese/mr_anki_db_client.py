@@ -56,9 +56,9 @@ class AnkiDbClient:
 
         query = "select c.id from cards c"+ \
         " join notes n on n.id = c.nid"+ \
-        f" where substr(flds, 0, instr(flds,char(31))) in {whereClause}"+ \
+        f" where c.queue <> -1 and (substr(flds, 0, instr(flds,char(31))) in {whereClause}"+ \
         " or substr(substr(flds, instr(flds,char(31))+1), 0,"+ \
-        f" instr(substr(flds, instr(flds,char(31))+1),char(31))) in {whereClause}"
+        f" instr(substr(flds, instr(flds,char(31))+1),char(31))) in {whereClause})"
 
         try:
             c.execute(query)

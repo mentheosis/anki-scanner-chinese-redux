@@ -58,9 +58,12 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.setMode('reader')
         self.start()
 
-    def runReaderAnswerCards(self):
-        self.setMode('readerAnswer')
-        self.start()
+    def runReaderAnswerCardsSync(self):
+        #self.setMode('readerAnswer')
+        #self.start()
+        (learnedCount, missedCount) = self.reader.answerCards()
+        self.sig.emit(f"Learned: {str(learnedCount)}, Missed: {str(missedCount)}")
+
 
     def setMode(self, mode):
         self.interrupt_and_quit = False
@@ -136,9 +139,9 @@ class TextScannerThreadAsync(QtCore.QThread):
             self.reader.readText(self.readerText, self.readerMissedWords, self.anki_db_path)
             #self.sig.emit(self.reader.printReport())
 
-        elif self.run_mode == 'readerAnswer':
-            (learnedCount, missedCount) = self.reader.answerCards()
-            self.sig.emit(f"Learned: {str(learnedCount)}, Missed: {str(missedCount)}")
+        #elif self.run_mode == 'readerAnswer':
+        #    (learnedCount, missedCount) = self.reader.answerCards()
+        #    self.sig.emit(f"Learned: {str(learnedCount)}, Missed: {str(missedCount)}")
 
         else:
             self.sig.emit(f"Worker thread has nothing to do for mode {self.run_mode}...")
