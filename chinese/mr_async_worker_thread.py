@@ -3,6 +3,7 @@ from .mr_text_scanner import TextScanner
 from .mr_note_maker import NoteMaker
 from .database import Dictionary
 from os.path import dirname, join, realpath
+from .mr_text_reader import TextReader
 import genanki
 
 class TextScannerThreadAsync(QtCore.QThread):
@@ -15,6 +16,7 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.interrupt_and_quit = False
         self.exiting = False
         self.run_mode = "scan"
+        self.reader = TextReader(self.sig.emit);
 
     def refresh_query(self, anki_db_path, query):
         self.anki_db_path = anki_db_path
@@ -48,7 +50,22 @@ class TextScannerThreadAsync(QtCore.QThread):
         self.note_target_maps = note_target_maps
         self.scan_mode = scan_mode
 
-    def setMode(self,mode):
+
+    def runReader(self, text, missedWords, anki_db_path):
+        self.readerText = text
+        self.readerMissedWords = missedWords
+        self.anki_db_path = anki_db_path
+        self.setMode('reader')
+        self.start()
+
+    def runReaderAnswerCardsSync(self):
+        #self.setMode('readerAnswer')
+        #self.start()
+        (learnedCount, missedCount) = self.reader.answerCards()
+        self.sig.emit(f"Learned: {str(learnedCount)}, Missed: {str(missedCount)}")
+
+
+    def setMode(self, mode):
         self.interrupt_and_quit = False
         self.run_mode = mode
 
@@ -117,6 +134,14 @@ class TextScannerThreadAsync(QtCore.QThread):
             sc = TextScanner(dictionary, self.anki_db_path, [0,1], [], self.sig, self)
             sc.query_db(self.query)
             dictionary.conn.close()
+
+        elif self.run_mode == 'reader':
+            self.reader.readText(self.readerText, self.readerMissedWords, self.anki_db_path)
+            #self.sig.emit(self.reader.printReport())
+
+        #elif self.run_mode == 'readerAnswer':
+        #    (learnedCount, missedCount) = self.reader.answerCards()
+        #    self.sig.emit(f"Learned: {str(learnedCount)}, Missed: {str(missedCount)}")
 
         else:
             self.sig.emit(f"Worker thread has nothing to do for mode {self.run_mode}...")

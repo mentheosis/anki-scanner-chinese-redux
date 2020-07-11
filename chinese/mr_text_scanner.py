@@ -37,7 +37,6 @@ class TextScanner:
         self.tags_to_exclude = tags_to_exclude
         self.emitter = emitter
         self.thread_obj = thread_obj
-        self.newDbClient = AnkiDbClient(anki_db_file_path, self.printOrLog)
 
     def printOrLog(self,text=""):
         if self.emitter != None and self.thread_obj != None and self.thread_obj.interrupt_and_quit == False:
@@ -167,10 +166,11 @@ class TextScanner:
 
     ## just a debugging method to explore anki file
     def query_db(self, query):
-        if query[0:9] == 'show tag ':
-            self.newDbClient.show_words_with_tag(query, self.dictionary, self.anki_note_indices)
-        else:
-            self.newDbClient.query_db(query)
+        with AnkiDbClient(self.anki_db_file_path, self.printOrLog) as newDbClient:
+            if query[0:9] == 'show tag ':
+                newDbClient.show_words_with_tag(query, self.dictionary, self.anki_note_indices)
+            else:
+                newDbClient.query_db(query)
 
 
     '''

@@ -13,13 +13,13 @@ class NoteMaker:
         self.dictionary = dictionary
         self.external_media_path = external_media_path
         self.target_note_type = target_note_type
+        self.anki_db_file_path = anki_db_file_path
 
         # do this defaulting here in case they explicitly pass None, which would override argument default
         if self.target_note_type == None:
             self.target_note_type = 'defaultScannerModel'
 
         self.note_target_maps = note_target_maps
-        self.AnkiDbClient = AnkiDbClient(anki_db_file_path, self.printOrLog)
 
         # this is the list of fields that can be generated to offer to the UI
         self.generated_fields = {
@@ -99,7 +99,11 @@ class NoteMaker:
             'name': 'Default scanner model',
             'flds': [{'name':'Using default settings'}]
         }
-        self.existing_models.update(self.AnkiDbClient.get_anki_note_models())
+
+        with AnkiDbClient(self.anki_db_file_path, self.printOrLog) as dbClient:
+            noteModels = dbClient.get_anki_note_models()
+
+        self.existing_models.update(noteModels)
         return self.existing_models
 
     def display_existing_node_models(self):

@@ -1,24 +1,13 @@
 ###################
 ## UI screens
 from aqt import mw
-from PyQt5.QtWidgets import QMainWindow, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
+from PyQt5.QtWidgets import QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QButtonGroup, QFileDialog, QTextBrowser, QWidget, QPushButton, QAction, QLineEdit, QMessageBox, QRadioButton, QPlainTextEdit
 from PyQt5 import QtCore, QtWidgets
 
 import traceback
 from .mr_async_worker_thread import TextScannerThreadAsync
+from .mr_window import MatterRabbitWindow
 from .singletons import config
-
-
-# class that we will use to generate all our UI windows
-class MatterRabbitWindow(QMainWindow):
-    def __init__(self, contentLayout, onCloseFn, parent=None):
-        super(MatterRabbitWindow, self).__init__(parent)
-        self.onCloseFn = onCloseFn
-        self.setCentralWidget(QWidget(self))
-        self.centralWidget().setLayout(contentLayout)
-
-    def closeEvent(self, evnt):
-        self.onCloseFn()
 
 
 ##########################################################
@@ -406,5 +395,8 @@ def showTextScanner(ui_mode="file"):
 
     dialog = MatterRabbitWindow(outerLayout, onDialogClose, mw)
     dialog.resize(900,650)
-    dialog.setWindowTitle('Chinese Text Scanner')
+    if ui_mode == "dev":
+        dialog.setWindowTitle('Query DB')
+    else:
+        dialog.setWindowTitle('Chinese Text Scanner')
     dialog.show()
