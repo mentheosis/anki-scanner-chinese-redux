@@ -45,7 +45,7 @@ class TextReader:
             self.learnedIds = []
             if len(learnedWordsRaw) > 0:
                 ids = dbClient.get_card_ids(learnedWordsRaw)
-                self.learnedIds = [id for id in ids if id not in missedIds]
+                self.learnedIds = [id for id in ids if id not in self.missedIds]
             #self.learnedWords = []
             #if len(self.learnedIds) > 0:
             #    #self.learnedWords = dbClient.get_cards_by_ids(self.learnedIds)
@@ -62,9 +62,11 @@ class TextReader:
         if not mw.col.sched._haveQueues:
             self.log("No queues, setting them up.")
             mw.col.sched.reset()
+        self.learnedWords = []
         for id in self.learnedIds:
             try:
                 card = mw.col.getCard(id)
+                self.learnedWords.append(card)
                 learnedCount = learnedCount + 1
                 card.timerStarted = time.time()
                 card.queue = 2
@@ -72,9 +74,11 @@ class TextReader:
             except:
                 e = traceback.format_exc()
                 self.printOrLog(f"Card {card.id} had an issue: {e}")
+        self.missedWords = []
         for id in self.missedIds:
             try:
                 card = mw.col.getCard(id)
+                self.missedWords.append(card)
                 missedCount = missedCount + 1
                 card.timerStarted = time.time()
                 card.queue = 2
@@ -88,8 +92,8 @@ class TextReader:
 
 
     def printReportShort(self):
-        outputString = f"Cards to pass: {len(self.learnedWords)}"
-        outputString = outputString + f"\nCards to miss: {len(self.missedWords)}"
+        outputString = f"Cards to pass: {len(self.learnedIds)}"
+        outputString = outputString + f"\nCards to miss: {len(self.missedIds)}"
         return outputString
 
     def printReport(self):
