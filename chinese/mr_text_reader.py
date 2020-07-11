@@ -30,27 +30,27 @@ class TextReader:
 
         with AnkiDbClient(anki_db_file_path, self.log) as dbClient:
             missedWordsRaw, missedCount = self.dedupe(missedWords.split(","))
-            self.missedWords = []
-            missedIds = []
+            self.missedIds = []
             if len(missedWordsRaw) > 0:
-                missedIds = dbClient.get_card_ids(missedWordsRaw)
-            if len(missedIds) > 0:
-                #self.missedWords = dbClient.get_cards_by_ids(missedIds)
-                for id in missedIds:
-                    self.missedWords.append(mw.col.getCard(id))
+                self.missedIds = dbClient.get_card_ids(missedWordsRaw)
+            #self.missedWords = []
+            #if len(self.missedIds) > 0:
+            #    #self.missedWords = dbClient.get_cards_by_ids(self.missedIds)
+            #    for id in self.missedIds:
+            #        self.missedWords.append(mw.col.getCard(id))
 
 
             learnedWordsRaw, learnedWordsCount = self.dedupe(jieba.cut(text, cut_all=False))
             ids = []
-            learnedIds = []
-            self.learnedWords = []
+            self.learnedIds = []
             if len(learnedWordsRaw) > 0:
                 ids = dbClient.get_card_ids(learnedWordsRaw)
-                learnedIds = [id for id in ids if id not in missedIds]
-            if len(learnedIds) > 0:
-                #self.learnedWords = dbClient.get_cards_by_ids(learnedIds)
-                for id in learnedIds:
-                    self.learnedWords.append(mw.col.getCard(id))
+                self.learnedIds = [id for id in ids if id not in missedIds]
+            #self.learnedWords = []
+            #if len(self.learnedIds) > 0:
+            #    #self.learnedWords = dbClient.get_cards_by_ids(self.learnedIds)
+            #    for id in self.learnedIds:
+            #        self.learnedWords.append(mw.col.getCard(id))
 
         self.log(f"\nTotal input words: {learnedWordsCount} \nDistinct input words: {len(learnedWordsRaw)}")
         self.log(self.printReportShort())
@@ -62,8 +62,9 @@ class TextReader:
         if not mw.col.sched._haveQueues:
             self.log("No queues, setting them up.")
             mw.col.sched.reset()
-        for card in self.learnedWords:
+        for id in self.learnedIds:
             try:
+                card = mw.col.getCard(id)
                 learnedCount = learnedCount + 1
                 card.timerStarted = time.time()
                 card.queue = 2
@@ -71,8 +72,9 @@ class TextReader:
             except:
                 e = traceback.format_exc()
                 self.printOrLog(f"Card {card.id} had an issue: {e}")
-        for card in self.missedWords:
+        for id in self.missedIds:
             try:
+                card = mw.col.getCard(id)
                 missedCount = missedCount + 1
                 card.timerStarted = time.time()
                 card.queue = 2
