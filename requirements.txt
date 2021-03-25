@@ -1,6 +1,6 @@
 PyQt5-sip==12.8.0
 PyQt5==5.15.0
-PyYAML==5.3.1
+PyYAML==5.4
 attrs==19.3.0
 beautifulsoup4==4.9.1
 cached-property==1.5.1
